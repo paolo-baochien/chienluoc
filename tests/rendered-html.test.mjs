@@ -37,8 +37,8 @@ test("server-renders the Chiến lược trainer", async () => {
   assert.match(html, /4º Đẳng/);
   assert.match(html, /Palestra Bao Lan/);
   assert.match(html, /Paolo Pasquetto · Bao Chien/);
-  assert.match(html, /\/images\/logo-baolan\.jpg/);
-  assert.match(html, /\/images\/logo-viet-vo-dao-italia\.png/);
+  assert.match(html, /images\/logo-baolan\.jpg/);
+  assert.match(html, /images\/logo-viet-vo-dao-italia\.png/);
   assert.match(html, /https:\/\/paypal\.me\/paolopasquetto/);
   assert.equal((html.match(/Ringraziamenti/g) ?? []).length, 1);
   assert.doesNotMatch(html, />Grazie</);
@@ -87,14 +87,15 @@ test("packages the installable offline app assets", async () => {
   const serviceWorker = await readFile(serviceWorkerUrl, "utf8");
 
   assert.equal(manifest.display, "standalone");
-  assert.equal(manifest.start_url, "/");
+  assert.equal(manifest.start_url, ".");
   assert.deepEqual(
     manifest.icons.map((icon) => icon.sizes),
     ["192x192", "512x512"],
   );
 
   assert.match(serviceWorker, /Array\.from\(\{ length: 30 \}/);
-  assert.match(serviceWorker, /\/audio\/\$\{index \+ 1\}\.mp3/);
+  assert.match(serviceWorker, /audio\/\$\{index \+ 1\}\.mp3/);
+  assert.match(serviceWorker, /self\.registration\.scope/);
 
   const iconSizes = await Promise.all(
     [
@@ -145,5 +146,19 @@ test("includes precise voice, playback, and screen-awake support", async () => {
   assert.match(styles, /\.voice-core > \.voice-word/);
   assert.match(styles, /font-size: clamp\(8px, 2\.6vw, 14px\)/);
   assert.doesNotMatch(styles, /\.voice-core > span:not\(\.sound-bars\)/);
-  assert.match(serviceWorker, /chien-luoc-trainer-v13/);
+  assert.match(serviceWorker, /chien-luoc-trainer-v14/);
+});
+
+test("builds a GitHub Pages version with the project base path", async () => {
+  const pagesHtml = await readFile(
+    new URL("../out/index.html", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(pagesHtml, /\/chienluoc\/_next\//);
+  assert.match(pagesHtml, /\/chienluoc\/manifest\.webmanifest/);
+  assert.doesNotMatch(pagesHtml, /\/chienluoc\/chienluoc\/og\.png/);
+  assert.ok(
+    (await stat(new URL("../out/audio/30.mp3", import.meta.url))).size > 10_000,
+  );
 });

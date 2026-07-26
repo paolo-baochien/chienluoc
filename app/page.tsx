@@ -427,7 +427,7 @@ export default function Home() {
 
           let audioBuffer = audioBufferCacheRef.current.get(number);
           if (!audioBuffer) {
-            const response = await fetch(`/audio/${number}.mp3`, {
+            const response = await fetch(`audio/${number}.mp3`, {
               cache: "force-cache",
             });
             if (!response.ok) {
@@ -468,7 +468,7 @@ export default function Home() {
         }
       }
 
-      const audio = new Audio(`/audio/${number}.mp3`);
+      const audio = new Audio(`audio/${number}.mp3`);
       audio.preload = "auto";
       audio.volume = 1;
       audioRef.current = audio;
@@ -552,7 +552,7 @@ export default function Home() {
       process.env.NODE_ENV === "production"
     ) {
       void navigator.serviceWorker
-        .register("/sw.js")
+        .register("sw.js")
         .then(() => navigator.serviceWorker.ready)
         .then(() => setOfflineReady(true))
         .catch(() => setOfflineReady(false));
@@ -1025,14 +1025,14 @@ export default function Home() {
         <div className="brand-logos">
           <img
             className="brand-logo"
-            src="/images/logo-baolan.jpg"
+            src="images/logo-baolan.jpg"
             alt="Logo della Palestra Bao Lan"
             width="54"
             height="50"
           />
           <img
             className="brand-logo brand-logo-viet"
-            src="/images/logo-viet-vo-dao-italia.png"
+            src="images/logo-viet-vo-dao-italia.png"
             alt="Logo Việt Võ Đạo Italia"
             width="52"
             height="52"
@@ -1153,13 +1153,13 @@ export default function Home() {
             <div className="intro-heading">
               <div className="intro-logos" aria-hidden="true">
                 <img
-                  src="/images/logo-baolan.jpg"
+                  src="images/logo-baolan.jpg"
                   alt=""
                   width="70"
                   height="65"
                 />
                 <img
-                  src="/images/logo-viet-vo-dao-italia.png"
+                  src="images/logo-viet-vo-dao-italia.png"
                   alt=""
                   width="65"
                   height="65"

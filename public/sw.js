@@ -1,15 +1,17 @@
-const CACHE_NAME = "chien-luoc-trainer-v13";
+const CACHE_NAME = "chien-luoc-trainer-v14";
+
+const SCOPE_URL = new URL("./", self.registration.scope).href;
 
 const PRECACHE_URLS = [
-  "/",
-  "/manifest.webmanifest",
-  "/images/logo-baolan.jpg",
-  "/images/logo-viet-vo-dao-italia.png",
-  "/icons/icon-192.png",
-  "/icons/icon-512.png",
-  "/apple-touch-icon.png",
-  ...Array.from({ length: 30 }, (_, index) => `/audio/${index + 1}.mp3`),
-];
+  "",
+  "manifest.webmanifest",
+  "images/logo-baolan.jpg",
+  "images/logo-viet-vo-dao-italia.png",
+  "icons/icon-192.png",
+  "icons/icon-512.png",
+  "apple-touch-icon.png",
+  ...Array.from({ length: 30 }, (_, index) => `audio/${index + 1}.mp3`),
+].map((path) => new URL(path, SCOPE_URL).href);
 
 async function cacheUrl(cache, url) {
   const request = new Request(url, { cache: "reload" });
@@ -24,7 +26,7 @@ async function precacheApp() {
   const cache = await caches.open(CACHE_NAME);
   await Promise.allSettled(PRECACHE_URLS.map((url) => cacheUrl(cache, url)));
 
-  const home = await cache.match("/");
+  const home = await cache.match(SCOPE_URL);
   if (!home) return;
 
   const html = await home.text();
@@ -33,9 +35,9 @@ async function precacheApp() {
     (match) => match[1],
   ).filter(
     (url) =>
-      url.startsWith("/_next/") ||
-      url.startsWith("/assets/") ||
-      url.startsWith("/_vinext/"),
+      url.includes("/_next/") ||
+      url.includes("/assets/") ||
+      url.includes("/_vinext/"),
   );
 
   await Promise.allSettled(
@@ -83,11 +85,11 @@ self.addEventListener("fetch", (event) => {
             const copy = response.clone();
             void caches
               .open(CACHE_NAME)
-              .then((cache) => cache.put("/", copy));
+              .then((cache) => cache.put(SCOPE_URL, copy));
           }
           return response;
         })
-        .catch(async () => (await caches.match("/")) ?? Response.error()),
+        .catch(async () => (await caches.match(SCOPE_URL)) ?? Response.error()),
     );
     return;
   }

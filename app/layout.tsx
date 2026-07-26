@@ -1,14 +1,18 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
+const isGitHubPages = process.env.GITHUB_PAGES === "true";
+const publicBaseUrl = isGitHubPages
+  ? "https://paolo-baochien.github.io"
+  : "https://chien-luoc-bao-lan.paolo-pasmarket.chatgpt.site";
+const publicBasePath = isGitHubPages ? "/chienluoc" : "";
+
 export const metadata: Metadata = {
-  metadataBase: new URL(
-    "https://chien-luoc-bao-lan.paolo-pasmarket.chatgpt.site",
-  ),
+  metadataBase: new URL(publicBaseUrl),
   title: "Chiến lược Trainer · Bảo Lan",
   description:
     "Allenamento vocale per la preparazione agli esami di Việt Võ Đạo.",
-  manifest: "/manifest.webmanifest",
+  manifest: `${publicBasePath}/manifest.webmanifest`,
   applicationName: "Chiến lược Trainer",
   appleWebApp: {
     capable: true,
@@ -18,19 +22,19 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
-        url: "/icons/icon-192.png",
+        url: `${publicBasePath}/icons/icon-192.png`,
         sizes: "192x192",
         type: "image/png",
       },
       {
-        url: "/icons/icon-512.png",
+        url: `${publicBasePath}/icons/icon-512.png`,
         sizes: "512x512",
         type: "image/png",
       },
     ],
     apple: [
       {
-        url: "/apple-touch-icon.png",
+        url: `${publicBasePath}/apple-touch-icon.png`,
         sizes: "180x180",
         type: "image/png",
       },
@@ -43,7 +47,7 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "/og.png",
+        url: `${publicBasePath}/og.png`,
         width: 1200,
         height: 630,
         alt: "Chiến lược Trainer per la preparazione agli esami di Việt Võ Đạo",
@@ -54,7 +58,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Chiến lược Trainer · Bảo Lan",
     description: "Allenati per il tuo esame di Việt Võ Đạo.",
-    images: ["/og.png"],
+    images: [`${publicBasePath}/og.png`],
   },
 };
 
