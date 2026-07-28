@@ -204,12 +204,15 @@ export default function Home() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const themeAudioRef = useRef<HTMLAudioElement | null>(null);
   const completionAudioRef = useRef<HTMLAudioElement | null>(null);
+  const completionSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const completionAudioTokenRef = useRef(0);
   const audioContextRef = useRef<AudioContext | null>(null);
   const playbackSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const playbackGainRef = useRef<GainNode | null>(null);
   const playbackCompressorRef = useRef<DynamicsCompressorNode | null>(null);
-  const audioBufferCacheRef = useRef<Map<number, AudioBuffer>>(new Map());
+  const audioBufferCacheRef = useRef<Map<number | "fine", AudioBuffer>>(
+    new Map(),
+  );
   const playbackTokenRef = useRef(0);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const recognitionActiveRef = useRef(false);
@@ -299,7 +302,7 @@ export default function Home() {
       theme = new Audio("audio/theme.mp3");
       theme.preload = "auto";
       theme.loop = true;
-      theme.volume = 0.2;
+      theme.volume = 0.6;
       themeAudioRef.current = theme;
     }
 
@@ -309,6 +312,19 @@ export default function Home() {
 
   const stopCompletionSound = useCallback(() => {
     completionAudioTokenRef.current += 1;
+
+    const source = completionSourceRef.current;
+    completionSourceRef.current = null;
+    if (source) {
+      source.onended = null;
+      try {
+        source.stop();
+      } catch {
+        // The completion sound may already have finished.
+      }
+      source.disconnect();
+    }
+
     const completion = completionAudioRef.current;
     completionAudioRef.current = null;
 
@@ -317,29 +333,6 @@ export default function Home() {
     completion.pause();
     completion.src = "";
   }, []);
-
-  const playCompletionSound = useCallback(async () => {
-    stopCompletionSound();
-    const completionToken = completionAudioTokenRef.current;
-    const audioRouteWasReset = restoreAudioSessionForPlayback();
-
-    if (audioRouteWasReset) {
-      await new Promise((resolve) => window.setTimeout(resolve, 260));
-    }
-    if (completionToken !== completionAudioTokenRef.current) return;
-
-    const completion = new Audio("audio/fine.mp3");
-    completion.preload = "auto";
-    completion.volume = 1;
-    completionAudioRef.current = completion;
-    completion.onended = () => {
-      if (completionAudioRef.current === completion) {
-        completionAudioRef.current = null;
-      }
-    };
-
-    await completion.play().catch(() => undefined);
-  }, [stopCompletionSound]);
 
   const stopPlayback = useCallback(() => {
     playbackTokenRef.current += 1;
@@ -381,6 +374,90 @@ export default function Home() {
       void context.close();
     }
   }, [releaseScreenWakeLock, stopPlayback]);
+
+  const ensureAudioContext = useCallback(async () => {
+    const AudioContextConstructor =
+      window.AudioContext ?? window.webkitAudioContext;
+
+    if (!AudioContextConstructor) return null;
+
+    let context = audioContextRef.current;
+    if (!context || context.state === "closed") {
+      context = new AudioContextConstructor();
+      audioContextRef.current = context;
+    }
+
+    if (context.state === "suspended") {
+      await context.resume();
+    }
+
+    return context;
+  }, []);
+
+  const playCompletionSound = useCallback(async () => {
+    stopCompletionSound();
+    const completionToken = completionAudioTokenRef.current;
+    const audioRouteWasReset = restoreAudioSessionForPlayback();
+
+    if (audioRouteWasReset) {
+      await new Promise((resolve) => window.setTimeout(resolve, 260));
+    }
+    if (completionToken !== completionAudioTokenRef.current) return;
+
+    const context = await ensureAudioContext().catch(() => null);
+    if (context && context.state !== "closed") {
+      try {
+        let completionBuffer = audioBufferCacheRef.current.get("fine");
+        if (!completionBuffer) {
+          const response = await fetch("audio/fine.mp3", {
+            cache: "force-cache",
+          });
+          if (!response.ok) {
+            throw new Error("Audio finale non disponibile");
+          }
+          completionBuffer = await context.decodeAudioData(
+            await response.arrayBuffer(),
+          );
+          audioBufferCacheRef.current.set("fine", completionBuffer);
+        }
+
+        if (completionToken !== completionAudioTokenRef.current) return;
+
+        const source = context.createBufferSource();
+        source.buffer = completionBuffer;
+        source.connect(context.destination);
+        completionSourceRef.current = source;
+        source.onended = () => {
+          if (completionAudioTokenRef.current !== completionToken) return;
+          completionSourceRef.current = null;
+          source.disconnect();
+          releaseAudioEngine();
+        };
+        source.start(0);
+        return;
+      } catch {
+        if (completionToken !== completionAudioTokenRef.current) return;
+      }
+    }
+
+    const completion = new Audio("audio/fine.mp3");
+    completion.preload = "auto";
+    completion.volume = 1;
+    completionAudioRef.current = completion;
+    completion.onended = () => {
+      if (completionAudioRef.current === completion) {
+        completionAudioRef.current = null;
+      }
+      releaseAudioEngine();
+    };
+    completion.onerror = () => releaseAudioEngine();
+
+    await completion.play().catch(() => releaseAudioEngine());
+  }, [
+    ensureAudioContext,
+    releaseAudioEngine,
+    stopCompletionSound,
+  ]);
 
   const stopRecognition = useCallback(() => {
     shouldListenRef.current = false;
@@ -571,7 +648,8 @@ export default function Home() {
       setElapsedSeconds(seconds);
       setStatus("idle");
       setScreen("complete");
-      releaseAudioEngine();
+      shouldKeepScreenAwakeRef.current = false;
+      releaseScreenWakeLock();
       void playCompletionSound();
       return;
     }
@@ -582,7 +660,7 @@ export default function Home() {
   }, [
     playPrompt,
     playCompletionSound,
-    releaseAudioEngine,
+    releaseScreenWakeLock,
     screen,
     stopPlayback,
     stopRecognition,
@@ -796,14 +874,7 @@ export default function Home() {
     }
 
     try {
-      const AudioContextConstructor =
-        window.AudioContext ?? window.webkitAudioContext;
-
-      if (!audioContextRef.current && AudioContextConstructor) {
-        const context = new AudioContextConstructor();
-        audioContextRef.current = context;
-        await context.resume();
-      }
+      await ensureAudioContext();
 
       prepareAudioSessionForMicrophone();
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -827,6 +898,7 @@ export default function Home() {
   const startExam = async (exam: Exam) => {
     stopThemeMusic();
     stopCompletionSound();
+    const audioContextReady = ensureAudioContext();
     const newQueue = shuffle(exam.max);
     setSelectedExam(exam);
     setQueue(newQueue);
@@ -843,6 +915,7 @@ export default function Home() {
     shouldKeepScreenAwakeRef.current = true;
     void requestScreenWakeLock();
 
+    await audioContextReady.catch(() => null);
     const microphone = await requestMicrophone();
     if (microphone === "denied") setStatus("denied");
     if (microphone === "unsupported") setStatus("unsupported");

@@ -144,8 +144,10 @@ test("includes precise voice, playback, and screen-awake support", async () => {
   assert.match(clientSource, /gain\.gain\.value = 1\.7/);
   assert.match(clientSource, /new Audio\("audio\/theme\.mp3"\)/);
   assert.match(clientSource, /theme\.loop = true/);
-  assert.match(clientSource, /theme\.volume = 0\.2/);
+  assert.match(clientSource, /theme\.volume = 0\.6/);
   assert.match(clientSource, /new Audio\("audio\/fine\.mp3"\)/);
+  assert.match(clientSource, /audioBufferCacheRef\.current\.get\("fine"\)/);
+  assert.match(clientSource, /source\.connect\(context\.destination\)/);
   assert.match(clientSource, /void playCompletionSound\(\)/);
   assert.match(clientSource, /navigator\.wakeLock\.request\("screen"\)/);
   assert.match(clientSource, /visibilitychange/);
@@ -154,7 +156,7 @@ test("includes precise voice, playback, and screen-awake support", async () => {
   assert.match(styles, /\.voice-core > \.voice-word/);
   assert.match(styles, /font-size: clamp\(8px, 2\.6vw, 14px\)/);
   assert.doesNotMatch(styles, /\.voice-core > span:not\(\.sound-bars\)/);
-  assert.match(serviceWorker, /chien-luoc-trainer-v15/);
+  assert.match(serviceWorker, /chien-luoc-trainer-v16/);
 });
 
 test("builds a GitHub Pages version with the project base path", async () => {
