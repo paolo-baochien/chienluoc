@@ -136,6 +136,7 @@ const EXAMS: Exam[] = [
 const WAKE_WORDS = ["prossimo"];
 
 const INTRO_STORAGE_KEY = "chien-luoc-intro-seen-v1";
+const AUDIO_ROUTE_SETTLE_MS = 420;
 
 function shuffle(max: number) {
   const values = Array.from({ length: max }, (_, index) => index + 1);
@@ -172,17 +173,24 @@ function restoreAudioSessionForPlayback() {
     if (!audioSession) return false;
 
     audioSession.type = "playback";
-    window.setTimeout(() => {
-      try {
-        audioSession.type = "auto";
-      } catch {
-        // Some Safari versions expose the API without allowing every change.
-      }
-    }, 0);
     return true;
   } catch {
     return false;
   }
+}
+
+function resetAudioSession() {
+  try {
+    if (navigator.audioSession) {
+      navigator.audioSession.type = "auto";
+    }
+  } catch {
+    // Some Safari versions expose the API without allowing every change.
+  }
+}
+
+function setMediaElementVolume(audio: HTMLAudioElement, volume: number) {
+  audio.volume = volume;
 }
 
 export default function Home() {
@@ -203,6 +211,9 @@ export default function Home() {
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const themeAudioRef = useRef<HTMLAudioElement | null>(null);
+  const themeAudioContextRef = useRef<AudioContext | null>(null);
+  const themeAudioSourceRef = useRef<MediaElementAudioSourceNode | null>(null);
+  const themeGainRef = useRef<GainNode | null>(null);
   const completionAudioRef = useRef<HTMLAudioElement | null>(null);
   const completionSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const completionAudioTokenRef = useRef(0);
@@ -288,14 +299,31 @@ export default function Home() {
 
   const pauseThemeMusic = useCallback(() => {
     themeAudioRef.current?.pause();
+    const context = themeAudioContextRef.current;
+    if (context && context.state === "running") {
+      void context.suspend().catch(() => undefined);
+    }
   }, []);
 
   const stopThemeMusic = useCallback(() => {
     const theme = themeAudioRef.current;
-    if (!theme) return;
+    if (theme) {
+      pauseThemeMusic();
+      theme.currentTime = 0;
+      theme.src = "";
+      themeAudioRef.current = null;
+    }
 
-    pauseThemeMusic();
-    theme.currentTime = 0;
+    themeAudioSourceRef.current?.disconnect();
+    themeAudioSourceRef.current = null;
+    themeGainRef.current?.disconnect();
+    themeGainRef.current = null;
+
+    const context = themeAudioContextRef.current;
+    themeAudioContextRef.current = null;
+    if (context && context.state !== "closed") {
+      void context.close();
+    }
   }, [pauseThemeMusic]);
 
   const startThemeMusic = useCallback(async () => {
@@ -307,8 +335,36 @@ export default function Home() {
       theme = new Audio("audio/theme.mp3?v=22");
       theme.preload = "auto";
       theme.loop = true;
-      theme.volume = 1;
       themeAudioRef.current = theme;
+    }
+
+    if (!themeAudioContextRef.current) {
+      const AudioContextConstructor =
+        window.AudioContext ?? window.webkitAudioContext;
+
+      if (AudioContextConstructor) {
+        try {
+          const context = new AudioContextConstructor();
+          const source = context.createMediaElementSource(theme);
+          const themeGain = context.createGain();
+          themeGain.gain.value = 0.05;
+          source.connect(themeGain);
+          themeGain.connect(context.destination);
+          themeAudioContextRef.current = context;
+          themeAudioSourceRef.current = source;
+          themeGainRef.current = themeGain;
+          setMediaElementVolume(theme, 1);
+        } catch {
+          setMediaElementVolume(theme, 0.05);
+        }
+      } else {
+        setMediaElementVolume(theme, 0.05);
+      }
+    }
+
+    const context = themeAudioContextRef.current;
+    if (context?.state === "suspended") {
+      await context.resume().catch(() => undefined);
     }
 
     if (!theme.paused) return;
@@ -369,7 +425,7 @@ export default function Home() {
   const releaseAudioEngine = useCallback(() => {
     shouldKeepScreenAwakeRef.current = false;
     releaseScreenWakeLock();
-    restoreAudioSessionForPlayback();
+    resetAudioSession();
     stopPlayback();
     audioBufferCacheRef.current.clear();
     playbackGainRef.current?.disconnect();
@@ -406,7 +462,9 @@ export default function Home() {
     const audioRouteWasReset = restoreAudioSessionForPlayback();
 
     if (audioRouteWasReset) {
-      await new Promise((resolve) => window.setTimeout(resolve, 260));
+      await new Promise((resolve) =>
+        window.setTimeout(resolve, AUDIO_ROUTE_SETTLE_MS),
+      );
     }
     if (completionToken !== completionAudioTokenRef.current) return;
 
@@ -540,7 +598,9 @@ export default function Home() {
 
       const audioRouteWasReset = restoreAudioSessionForPlayback();
       if (audioRouteWasReset) {
-        await new Promise((resolve) => window.setTimeout(resolve, 260));
+        await new Promise((resolve) =>
+          window.setTimeout(resolve, AUDIO_ROUTE_SETTLE_MS),
+        );
         if (playbackToken !== playbackTokenRef.current || pausedRef.current) {
           return;
         }
@@ -907,7 +967,9 @@ export default function Home() {
       });
       stream.getTracks().forEach((track) => track.stop());
       restoreAudioSessionForPlayback();
-      await new Promise((resolve) => window.setTimeout(resolve, 260));
+      await new Promise((resolve) =>
+        window.setTimeout(resolve, AUDIO_ROUTE_SETTLE_MS),
+      );
 
       return "ready" as const;
     } catch {

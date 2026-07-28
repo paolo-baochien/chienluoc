@@ -137,7 +137,8 @@ test("includes precise voice, playback, and screen-awake support", async () => {
   assert.match(clientSource, /audioSession\.type = "playback"/);
   assert.match(clientSource, /audioSession\.type = "auto"/);
   assert.match(clientSource, /echoCancellation: false/);
-  assert.match(clientSource, /window\.setTimeout\(resolve, 260\)/);
+  assert.match(clientSource, /const AUDIO_ROUTE_SETTLE_MS = 420/);
+  assert.match(clientSource, /window\.setTimeout\(resolve, AUDIO_ROUTE_SETTLE_MS\)/);
   assert.doesNotMatch(clientSource, /createMediaStreamSource/);
   assert.doesNotMatch(clientSource, /prossimo-detected/);
   assert.match(clientSource, /Attiva il microfono/);
@@ -145,7 +146,8 @@ test("includes precise voice, playback, and screen-awake support", async () => {
   assert.doesNotMatch(clientSource, /createDynamicsCompressor/);
   assert.match(clientSource, /new Audio\("audio\/theme\.mp3\?v=22"\)/);
   assert.match(clientSource, /theme\.loop = true/);
-  assert.match(clientSource, /theme\.volume = 1/);
+  assert.match(clientSource, /createMediaElementSource\(theme\)/);
+  assert.match(clientSource, /themeGain\.gain\.value = 0\.05/);
   assert.match(clientSource, /document\.visibilityState !== "visible"/);
   assert.match(clientSource, /window\.addEventListener\("pagehide", pauseThemeMusic\)/);
   assert.match(clientSource, /window\.addEventListener\("pageshow", syncThemeWithPage\)/);
@@ -172,7 +174,7 @@ test("includes precise voice, playback, and screen-awake support", async () => {
     /calc\(25px \+ env\(safe-area-inset-top, 0px\)\)/,
   );
   assert.doesNotMatch(styles, /\.voice-core > span:not\(\.sound-bars\)/);
-  assert.match(serviceWorker, /chien-luoc-trainer-v22/);
+  assert.match(serviceWorker, /chien-luoc-trainer-v23/);
 });
 
 test("builds a GitHub Pages version with the project base path", async () => {
