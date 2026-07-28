@@ -11,4 +11,6 @@ Việt Võ Đạo della Palestra Bảo Lan.
 - comandi alternativi per ripetere, avanzare e mettere in pausa;
 - riepilogo e durata della sessione.
 
-Gli audio da `1.mp3` a `30.mp3` sono inclusi in `public/audio`.
+Gli audio da `1.mp3` a `30.mp3`, la musica della schermata di selezione
+`theme.mp3` e il suono conclusivo `fine.mp3` sono inclusi in `public/audio` e
+restano disponibili anche offline.

@@ -1,4 +1,4 @@
-const CACHE_NAME = "chien-luoc-trainer-v14";
+const CACHE_NAME = "chien-luoc-trainer-v15";
 
 const SCOPE_URL = new URL("./", self.registration.scope).href;
 
@@ -11,6 +11,8 @@ const PRECACHE_URLS = [
   "icons/icon-512.png",
   "apple-touch-icon.png",
   ...Array.from({ length: 30 }, (_, index) => `audio/${index + 1}.mp3`),
+  "audio/theme.mp3",
+  "audio/fine.mp3",
 ].map((path) => new URL(path, SCOPE_URL).href);
 
 async function cacheUrl(cache, url) {

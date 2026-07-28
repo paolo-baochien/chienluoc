@@ -202,6 +202,9 @@ export default function Home() {
   const [screenAwake, setScreenAwake] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const themeAudioRef = useRef<HTMLAudioElement | null>(null);
+  const completionAudioRef = useRef<HTMLAudioElement | null>(null);
+  const completionAudioTokenRef = useRef(0);
   const audioContextRef = useRef<AudioContext | null>(null);
   const playbackSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const playbackGainRef = useRef<GainNode | null>(null);
@@ -280,6 +283,63 @@ export default function Home() {
       wakeLockRequestRef.current = false;
     }
   }, []);
+
+  const stopThemeMusic = useCallback(() => {
+    const theme = themeAudioRef.current;
+    if (!theme) return;
+
+    theme.pause();
+    theme.currentTime = 0;
+  }, []);
+
+  const startThemeMusic = useCallback(async () => {
+    let theme = themeAudioRef.current;
+
+    if (!theme) {
+      theme = new Audio("audio/theme.mp3");
+      theme.preload = "auto";
+      theme.loop = true;
+      theme.volume = 0.2;
+      themeAudioRef.current = theme;
+    }
+
+    if (!theme.paused) return;
+    await theme.play().catch(() => undefined);
+  }, []);
+
+  const stopCompletionSound = useCallback(() => {
+    completionAudioTokenRef.current += 1;
+    const completion = completionAudioRef.current;
+    completionAudioRef.current = null;
+
+    if (!completion) return;
+    completion.onended = null;
+    completion.pause();
+    completion.src = "";
+  }, []);
+
+  const playCompletionSound = useCallback(async () => {
+    stopCompletionSound();
+    const completionToken = completionAudioTokenRef.current;
+    const audioRouteWasReset = restoreAudioSessionForPlayback();
+
+    if (audioRouteWasReset) {
+      await new Promise((resolve) => window.setTimeout(resolve, 260));
+    }
+    if (completionToken !== completionAudioTokenRef.current) return;
+
+    const completion = new Audio("audio/fine.mp3");
+    completion.preload = "auto";
+    completion.volume = 1;
+    completionAudioRef.current = completion;
+    completion.onended = () => {
+      if (completionAudioRef.current === completion) {
+        completionAudioRef.current = null;
+      }
+    };
+
+    await completion.play().catch(() => undefined);
+  }, [stopCompletionSound]);
 
   const stopPlayback = useCallback(() => {
     playbackTokenRef.current += 1;
@@ -512,6 +572,7 @@ export default function Home() {
       setStatus("idle");
       setScreen("complete");
       releaseAudioEngine();
+      void playCompletionSound();
       return;
     }
 
@@ -520,6 +581,7 @@ export default function Home() {
     window.setTimeout(() => void playPrompt(activeQueue[nextPosition]), 180);
   }, [
     playPrompt,
+    playCompletionSound,
     releaseAudioEngine,
     screen,
     stopPlayback,
@@ -704,11 +766,26 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    if (screen === "select") {
+      void startThemeMusic();
+      return;
+    }
+
+    stopThemeMusic();
+  }, [screen, startThemeMusic, stopThemeMusic]);
+
+  useEffect(() => {
     return () => {
       audioRef.current?.pause();
+      stopThemeMusic();
+      stopCompletionSound();
       releaseAudioEngine();
     };
-  }, [releaseAudioEngine]);
+  }, [
+    releaseAudioEngine,
+    stopCompletionSound,
+    stopThemeMusic,
+  ]);
 
   const requestMicrophone = async () => {
     if (
@@ -748,6 +825,8 @@ export default function Home() {
   };
 
   const startExam = async (exam: Exam) => {
+    stopThemeMusic();
+    stopCompletionSound();
     const newQueue = shuffle(exam.max);
     setSelectedExam(exam);
     setQueue(newQueue);
@@ -814,6 +893,7 @@ export default function Home() {
   const leaveTraining = () => {
     stopRecognition();
     audioRef.current?.pause();
+    stopCompletionSound();
     releaseAudioEngine();
     pausedRef.current = false;
     setScreen("select");
@@ -824,6 +904,7 @@ export default function Home() {
     positionRef.current = 0;
     setStatus("idle");
     setHeard("");
+    window.setTimeout(() => void startThemeMusic(), 0);
   };
 
   const restart = () => {
@@ -838,6 +919,7 @@ export default function Home() {
       // The guide can still be dismissed when storage is unavailable.
     }
     setShowIntro(false);
+    void startThemeMusic();
   };
 
   const statusCopy = {
@@ -1019,7 +1101,10 @@ export default function Home() {
   }
 
   return (
-    <main className="app-shell selection-shell">
+    <main
+      className="app-shell selection-shell"
+      onPointerDown={() => void startThemeMusic()}
+    >
       <div className="grain" aria-hidden="true" />
       <header className="brand-header">
         <div className="brand-logos">
@@ -1125,9 +1210,9 @@ export default function Home() {
         <span>
           <i className="status-dot" aria-hidden="true" />
           {offlineReady
-            ? "30 audio pronti anche offline"
+            ? "Audio e musica pronti anche offline"
             : isOnline
-              ? "30 audio pronti"
+              ? "Audio e musica pronti"
               : "Modalità offline"}
         </span>
         <span>Voce o pulsante “Avanti”</span>

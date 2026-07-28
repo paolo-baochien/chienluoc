@@ -45,18 +45,19 @@ test("server-renders the Chiến lược trainer", async () => {
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/i);
 });
 
-test("packages every one of the 30 audio prompts", async () => {
+test("packages all prompts, selection theme, and completion audio", async () => {
   const sizes = await Promise.all(
-    Array.from({ length: 30 }, async (_, index) => {
-      const audio = new URL(
-        `../dist/client/audio/${index + 1}.mp3`,
-        import.meta.url,
-      );
+    [
+      ...Array.from({ length: 30 }, (_, index) => `${index + 1}.mp3`),
+      "theme.mp3",
+      "fine.mp3",
+    ].map(async (file) => {
+      const audio = new URL(`../dist/client/audio/${file}`, import.meta.url);
       return (await stat(audio)).size;
     }),
   );
 
-  assert.equal(sizes.length, 30);
+  assert.equal(sizes.length, 32);
   assert.ok(sizes.every((size) => size > 10_000));
 });
 
@@ -95,6 +96,8 @@ test("packages the installable offline app assets", async () => {
 
   assert.match(serviceWorker, /Array\.from\(\{ length: 30 \}/);
   assert.match(serviceWorker, /audio\/\$\{index \+ 1\}\.mp3/);
+  assert.match(serviceWorker, /audio\/theme\.mp3/);
+  assert.match(serviceWorker, /audio\/fine\.mp3/);
   assert.match(serviceWorker, /self\.registration\.scope/);
 
   const iconSizes = await Promise.all(
@@ -139,6 +142,11 @@ test("includes precise voice, playback, and screen-awake support", async () => {
   assert.doesNotMatch(clientSource, /prossimo-detected/);
   assert.match(clientSource, /Attiva il microfono/);
   assert.match(clientSource, /gain\.gain\.value = 1\.7/);
+  assert.match(clientSource, /new Audio\("audio\/theme\.mp3"\)/);
+  assert.match(clientSource, /theme\.loop = true/);
+  assert.match(clientSource, /theme\.volume = 0\.2/);
+  assert.match(clientSource, /new Audio\("audio\/fine\.mp3"\)/);
+  assert.match(clientSource, /void playCompletionSound\(\)/);
   assert.match(clientSource, /navigator\.wakeLock\.request\("screen"\)/);
   assert.match(clientSource, /visibilitychange/);
   assert.match(clientSource, /wakeLock\.release\(\)/);
@@ -146,7 +154,7 @@ test("includes precise voice, playback, and screen-awake support", async () => {
   assert.match(styles, /\.voice-core > \.voice-word/);
   assert.match(styles, /font-size: clamp\(8px, 2\.6vw, 14px\)/);
   assert.doesNotMatch(styles, /\.voice-core > span:not\(\.sound-bars\)/);
-  assert.match(serviceWorker, /chien-luoc-trainer-v14/);
+  assert.match(serviceWorker, /chien-luoc-trainer-v15/);
 });
 
 test("builds a GitHub Pages version with the project base path", async () => {
@@ -160,5 +168,13 @@ test("builds a GitHub Pages version with the project base path", async () => {
   assert.doesNotMatch(pagesHtml, /\/chienluoc\/chienluoc\/og\.png/);
   assert.ok(
     (await stat(new URL("../out/audio/30.mp3", import.meta.url))).size > 10_000,
+  );
+  assert.ok(
+    (await stat(new URL("../out/audio/theme.mp3", import.meta.url))).size >
+      10_000,
+  );
+  assert.ok(
+    (await stat(new URL("../out/audio/fine.mp3", import.meta.url))).size >
+      10_000,
   );
 });
