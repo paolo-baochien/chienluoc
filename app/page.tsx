@@ -209,7 +209,6 @@ export default function Home() {
   const audioContextRef = useRef<AudioContext | null>(null);
   const playbackSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const playbackGainRef = useRef<GainNode | null>(null);
-  const playbackCompressorRef = useRef<DynamicsCompressorNode | null>(null);
   const audioBufferCacheRef = useRef<Map<number | "fine", AudioBuffer>>(
     new Map(),
   );
@@ -305,7 +304,7 @@ export default function Home() {
     let theme = themeAudioRef.current;
 
     if (!theme) {
-      theme = new Audio("audio/theme.mp3?v=21");
+      theme = new Audio("audio/theme.mp3?v=22");
       theme.preload = "auto";
       theme.loop = true;
       theme.volume = 1;
@@ -375,8 +374,6 @@ export default function Home() {
     audioBufferCacheRef.current.clear();
     playbackGainRef.current?.disconnect();
     playbackGainRef.current = null;
-    playbackCompressorRef.current?.disconnect();
-    playbackCompressorRef.current = null;
     const context = audioContextRef.current;
     audioContextRef.current = null;
     if (context && context.state !== "closed") {
@@ -418,7 +415,7 @@ export default function Home() {
       try {
         let completionBuffer = audioBufferCacheRef.current.get("fine");
         if (!completionBuffer) {
-          const response = await fetch("audio/fine.mp3", {
+          const response = await fetch("audio/fine.mp3?v=22", {
             cache: "force-cache",
           });
           if (!response.ok) {
@@ -449,7 +446,7 @@ export default function Home() {
       }
     }
 
-    const completion = new Audio("audio/fine.mp3");
+    const completion = new Audio("audio/fine.mp3?v=22");
     completion.preload = "auto";
     completion.volume = 1;
     completionAudioRef.current = completion;
@@ -552,19 +549,11 @@ export default function Home() {
       const context = audioContextRef.current;
       if (context && context.state !== "closed") {
         try {
-          if (!playbackGainRef.current || !playbackCompressorRef.current) {
+          if (!playbackGainRef.current) {
             const gain = context.createGain();
-            const compressor = context.createDynamicsCompressor();
-            gain.gain.value = 1.7;
-            compressor.threshold.value = -15;
-            compressor.knee.value = 16;
-            compressor.ratio.value = 7;
-            compressor.attack.value = 0.004;
-            compressor.release.value = 0.22;
-            gain.connect(compressor);
-            compressor.connect(context.destination);
+            gain.gain.value = 1;
+            gain.connect(context.destination);
             playbackGainRef.current = gain;
-            playbackCompressorRef.current = compressor;
           }
 
           if (context.state === "suspended") {
@@ -573,7 +562,7 @@ export default function Home() {
 
           let audioBuffer = audioBufferCacheRef.current.get(number);
           if (!audioBuffer) {
-            const response = await fetch(`audio/${number}.mp3`, {
+            const response = await fetch(`audio/${number}.mp3?v=22`, {
               cache: "force-cache",
             });
             if (!response.ok) {
@@ -614,7 +603,7 @@ export default function Home() {
         }
       }
 
-      const audio = new Audio(`audio/${number}.mp3`);
+      const audio = new Audio(`audio/${number}.mp3?v=22`);
       audio.preload = "auto";
       audio.volume = 1;
       audioRef.current = audio;

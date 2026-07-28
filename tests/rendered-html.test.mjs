@@ -94,10 +94,10 @@ test("packages the installable offline app assets", async () => {
     ["192x192", "512x512"],
   );
 
-  assert.match(serviceWorker, /Array\.from\(\{ length: 30 \}/);
-  assert.match(serviceWorker, /audio\/\$\{index \+ 1\}\.mp3/);
-  assert.match(serviceWorker, /audio\/theme\.mp3\?v=21/);
-  assert.match(serviceWorker, /audio\/fine\.mp3/);
+  assert.match(serviceWorker, /Array\.from\(\s*\{ length: 30 \}/);
+  assert.match(serviceWorker, /audio\/\$\{index \+ 1\}\.mp3\?v=22/);
+  assert.match(serviceWorker, /audio\/theme\.mp3\?v=22/);
+  assert.match(serviceWorker, /audio\/fine\.mp3\?v=22/);
   assert.match(serviceWorker, /self\.registration\.scope/);
 
   const iconSizes = await Promise.all(
@@ -141,14 +141,15 @@ test("includes precise voice, playback, and screen-awake support", async () => {
   assert.doesNotMatch(clientSource, /createMediaStreamSource/);
   assert.doesNotMatch(clientSource, /prossimo-detected/);
   assert.match(clientSource, /Attiva il microfono/);
-  assert.match(clientSource, /gain\.gain\.value = 1\.7/);
-  assert.match(clientSource, /new Audio\("audio\/theme\.mp3\?v=21"\)/);
+  assert.match(clientSource, /gain\.gain\.value = 1/);
+  assert.doesNotMatch(clientSource, /createDynamicsCompressor/);
+  assert.match(clientSource, /new Audio\("audio\/theme\.mp3\?v=22"\)/);
   assert.match(clientSource, /theme\.loop = true/);
   assert.match(clientSource, /theme\.volume = 1/);
   assert.match(clientSource, /document\.visibilityState !== "visible"/);
   assert.match(clientSource, /window\.addEventListener\("pagehide", pauseThemeMusic\)/);
   assert.match(clientSource, /window\.addEventListener\("pageshow", syncThemeWithPage\)/);
-  assert.match(clientSource, /new Audio\("audio\/fine\.mp3"\)/);
+  assert.match(clientSource, /new Audio\("audio\/fine\.mp3\?v=22"\)/);
   assert.match(clientSource, /audioBufferCacheRef\.current\.get\("fine"\)/);
   assert.match(clientSource, /source\.connect\(context\.destination\)/);
   assert.match(clientSource, /void playCompletionSound\(\)/);
@@ -171,7 +172,7 @@ test("includes precise voice, playback, and screen-awake support", async () => {
     /calc\(25px \+ env\(safe-area-inset-top, 0px\)\)/,
   );
   assert.doesNotMatch(styles, /\.voice-core > span:not\(\.sound-bars\)/);
-  assert.match(serviceWorker, /chien-luoc-trainer-v21/);
+  assert.match(serviceWorker, /chien-luoc-trainer-v22/);
 });
 
 test("builds a GitHub Pages version with the project base path", async () => {
