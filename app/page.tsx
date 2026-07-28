@@ -287,27 +287,36 @@ export default function Home() {
     }
   }, []);
 
+  const pauseThemeMusic = useCallback(() => {
+    themeAudioRef.current?.pause();
+  }, []);
+
   const stopThemeMusic = useCallback(() => {
     const theme = themeAudioRef.current;
     if (!theme) return;
 
-    theme.pause();
+    pauseThemeMusic();
     theme.currentTime = 0;
-  }, []);
+  }, [pauseThemeMusic]);
 
   const startThemeMusic = useCallback(async () => {
+    if (document.visibilityState !== "visible") return;
+
     let theme = themeAudioRef.current;
 
     if (!theme) {
       theme = new Audio("audio/theme.mp3");
       theme.preload = "auto";
       theme.loop = true;
-      theme.volume = 0.6;
+      theme.volume = 0.3;
       themeAudioRef.current = theme;
     }
 
     if (!theme.paused) return;
     await theme.play().catch(() => undefined);
+    if (document.visibilityState !== "visible") {
+      theme.pause();
+    }
   }, []);
 
   const stopCompletionSound = useCallback(() => {
@@ -851,6 +860,29 @@ export default function Home() {
 
     stopThemeMusic();
   }, [screen, startThemeMusic, stopThemeMusic]);
+
+  useEffect(() => {
+    const syncThemeWithPage = () => {
+      if (document.visibilityState !== "visible") {
+        pauseThemeMusic();
+        return;
+      }
+
+      if (screen === "select") {
+        void startThemeMusic();
+      }
+    };
+
+    document.addEventListener("visibilitychange", syncThemeWithPage);
+    window.addEventListener("pagehide", pauseThemeMusic);
+    window.addEventListener("pageshow", syncThemeWithPage);
+
+    return () => {
+      document.removeEventListener("visibilitychange", syncThemeWithPage);
+      window.removeEventListener("pagehide", pauseThemeMusic);
+      window.removeEventListener("pageshow", syncThemeWithPage);
+    };
+  }, [pauseThemeMusic, screen, startThemeMusic]);
 
   useEffect(() => {
     return () => {
