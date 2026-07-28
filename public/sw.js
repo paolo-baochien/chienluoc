@@ -1,4 +1,4 @@
-const CACHE_NAME = "chien-luoc-trainer-v18";
+const CACHE_NAME = "chien-luoc-trainer-v19";
 
 const SCOPE_URL = new URL("./", self.registration.scope).href;
 

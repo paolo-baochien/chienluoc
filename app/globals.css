@@ -687,8 +687,11 @@ button:focus-visible {
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: 20px;
-  min-height: 92px;
-  padding: 16px clamp(22px, 4vw, 64px);
+  min-height: calc(92px + env(safe-area-inset-top, 0px));
+  padding:
+    calc(16px + env(safe-area-inset-top, 0px))
+    clamp(22px, 4vw, 64px)
+    16px;
 }
 
 .back-button {
@@ -1388,8 +1391,11 @@ button:focus-visible {
 
   .training-header {
     grid-template-columns: 1fr auto;
-    min-height: 80px;
-    padding: 13px 18px;
+    min-height: calc(80px + env(safe-area-inset-top, 0px));
+    padding:
+      calc(13px + env(safe-area-inset-top, 0px))
+      18px
+      13px;
   }
 
   .exam-label {
@@ -1452,7 +1458,7 @@ button:focus-visible {
 
 @media (max-height: 720px) and (min-width: 621px) {
   .training-header {
-    min-height: 72px;
+    min-height: calc(72px + env(safe-area-inset-top, 0px));
   }
 
   .training-stage {
