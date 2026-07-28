@@ -77,7 +77,10 @@ button:focus-visible {
   grid-template-rows: auto 1fr auto auto;
   gap: 0 6vw;
   overflow: visible;
-  padding: 34px clamp(28px, 5vw, 82px) 28px;
+  padding:
+    calc(34px + env(safe-area-inset-top, 0px))
+    clamp(28px, 5vw, 82px)
+    28px;
 }
 
 .selection-shell::before {
@@ -1253,7 +1256,10 @@ button:focus-visible {
 @media (max-width: 980px) {
   .selection-shell {
     display: block;
-    padding: 25px clamp(20px, 5vw, 46px);
+    padding:
+      calc(25px + env(safe-area-inset-top, 0px))
+      clamp(20px, 5vw, 46px)
+      25px;
   }
 
   .hero-copy {
