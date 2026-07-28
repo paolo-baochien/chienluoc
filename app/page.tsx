@@ -308,7 +308,7 @@ export default function Home() {
       theme = new Audio("audio/theme.mp3");
       theme.preload = "auto";
       theme.loop = true;
-      theme.volume = 0.3;
+      theme.volume = 1;
       themeAudioRef.current = theme;
     }
 
