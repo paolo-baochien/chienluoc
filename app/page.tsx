@@ -347,7 +347,7 @@ export default function Home() {
           const context = new AudioContextConstructor();
           const source = context.createMediaElementSource(theme);
           const themeGain = context.createGain();
-          themeGain.gain.value = 0.05;
+          themeGain.gain.value = 0.1;
           source.connect(themeGain);
           themeGain.connect(context.destination);
           themeAudioContextRef.current = context;
@@ -355,10 +355,10 @@ export default function Home() {
           themeGainRef.current = themeGain;
           setMediaElementVolume(theme, 1);
         } catch {
-          setMediaElementVolume(theme, 0.05);
+          setMediaElementVolume(theme, 0.1);
         }
       } else {
-        setMediaElementVolume(theme, 0.05);
+        setMediaElementVolume(theme, 0.1);
       }
     }
 

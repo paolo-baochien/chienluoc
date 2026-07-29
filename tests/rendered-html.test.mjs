@@ -147,7 +147,7 @@ test("includes precise voice, playback, and screen-awake support", async () => {
   assert.match(clientSource, /new Audio\("audio\/theme\.mp3\?v=22"\)/);
   assert.match(clientSource, /theme\.loop = true/);
   assert.match(clientSource, /createMediaElementSource\(theme\)/);
-  assert.match(clientSource, /themeGain\.gain\.value = 0\.05/);
+  assert.match(clientSource, /themeGain\.gain\.value = 0\.1/);
   assert.match(clientSource, /document\.visibilityState !== "visible"/);
   assert.match(clientSource, /window\.addEventListener\("pagehide", pauseThemeMusic\)/);
   assert.match(clientSource, /window\.addEventListener\("pageshow", syncThemeWithPage\)/);
@@ -174,7 +174,7 @@ test("includes precise voice, playback, and screen-awake support", async () => {
     /calc\(25px \+ env\(safe-area-inset-top, 0px\)\)/,
   );
   assert.doesNotMatch(styles, /\.voice-core > span:not\(\.sound-bars\)/);
-  assert.match(serviceWorker, /chien-luoc-trainer-v23/);
+  assert.match(serviceWorker, /chien-luoc-trainer-v24/);
 });
 
 test("builds a GitHub Pages version with the project base path", async () => {
