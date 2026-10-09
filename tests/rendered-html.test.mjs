@@ -52,13 +52,14 @@ test("packages all prompts, selection theme, and completion audio", async () => 
       ...Array.from({ length: 30 }, (_, index) => `${index + 1}.mp3`),
       "theme.mp3",
       "fine.mp3",
+      "gong.mp3",
     ].map(async (file) => {
       const audio = new URL(`../dist/client/audio/${file}`, import.meta.url);
       return (await stat(audio)).size;
     }),
   );
 
-  assert.equal(sizes.length, 32);
+  assert.equal(sizes.length, 33);
   assert.ok(sizes.every((size) => size > 10_000));
 });
 
@@ -99,6 +100,7 @@ test("packages the installable offline app assets", async () => {
   assert.match(serviceWorker, /audio\/\$\{index \+ 1\}\.mp3\?v=22/);
   assert.match(serviceWorker, /audio\/theme\.mp3\?v=22/);
   assert.match(serviceWorker, /audio\/fine\.mp3\?v=22/);
+  assert.match(serviceWorker, /audio\/gong\.mp3\?v=27/);
   assert.match(serviceWorker, /self\.registration\.scope/);
 
   const iconSizes = await Promise.all(
@@ -154,6 +156,8 @@ test("includes precise voice, playback, and screen-awake support", async () => {
   assert.match(clientSource, /window\.addEventListener\("pagehide", pauseThemeMusic\)/);
   assert.match(clientSource, /window\.addEventListener\("pageshow", syncThemeWithPage\)/);
   assert.match(clientSource, /new Audio\("audio\/fine\.mp3\?v=22"\)/);
+  assert.match(clientSource, /new Audio\("audio\/gong\.mp3\?v=27"\)/);
+  assert.match(clientSource, /onClick=\{\(\) => void selectExam\(exam\)\}/);
   assert.match(clientSource, /audioBufferCacheRef\.current\.get\("fine"\)/);
   assert.match(clientSource, /source\.connect\(context\.destination\)/);
   assert.match(clientSource, /void playCompletionSound\(\)/);
@@ -178,7 +182,7 @@ test("includes precise voice, playback, and screen-awake support", async () => {
     /calc\(25px \+ env\(safe-area-inset-top, 0px\)\)/,
   );
   assert.doesNotMatch(styles, /\.voice-core > span:not\(\.sound-bars\)/);
-  assert.match(serviceWorker, /chien-luoc-trainer-v26/);
+  assert.match(serviceWorker, /chien-luoc-trainer-v27/);
 });
 
 test("builds a GitHub Pages version with the project base path", async () => {
@@ -199,6 +203,10 @@ test("builds a GitHub Pages version with the project base path", async () => {
   );
   assert.ok(
     (await stat(new URL("../out/audio/fine.mp3", import.meta.url))).size >
+      10_000,
+  );
+  assert.ok(
+    (await stat(new URL("../out/audio/gong.mp3", import.meta.url))).size >
       10_000,
   );
 });

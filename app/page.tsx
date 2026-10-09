@@ -214,6 +214,9 @@ export default function Home() {
   const themeAudioContextRef = useRef<AudioContext | null>(null);
   const themeAudioSourceRef = useRef<MediaElementAudioSourceNode | null>(null);
   const themeGainRef = useRef<GainNode | null>(null);
+  const selectionGongRef = useRef<HTMLAudioElement | null>(null);
+  const selectionGongTimerRef = useRef<number | null>(null);
+  const examSelectionInProgressRef = useRef(false);
   const completionAudioRef = useRef<HTMLAudioElement | null>(null);
   const completionSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const completionAudioTokenRef = useRef(0);
@@ -397,6 +400,53 @@ export default function Home() {
     completion.pause();
     completion.src = "";
   }, []);
+
+  const stopSelectionGong = useCallback(() => {
+    if (selectionGongTimerRef.current !== null) {
+      window.clearTimeout(selectionGongTimerRef.current);
+      selectionGongTimerRef.current = null;
+    }
+
+    const gong = selectionGongRef.current;
+    selectionGongRef.current = null;
+    if (!gong) return;
+
+    gong.onended = null;
+    gong.onerror = null;
+    gong.pause();
+    gong.src = "";
+  }, []);
+
+  const playSelectionGong = useCallback(async () => {
+    stopSelectionGong();
+
+    await new Promise<void>((resolve) => {
+      const gong = new Audio("audio/gong.mp3?v=27");
+      gong.preload = "auto";
+      selectionGongRef.current = gong;
+      let finished = false;
+
+      const finish = () => {
+        if (finished) return;
+        finished = true;
+        if (selectionGongTimerRef.current !== null) {
+          window.clearTimeout(selectionGongTimerRef.current);
+          selectionGongTimerRef.current = null;
+        }
+        gong.onended = null;
+        gong.onerror = null;
+        if (selectionGongRef.current === gong) {
+          selectionGongRef.current = null;
+        }
+        resolve();
+      };
+
+      gong.onended = finish;
+      gong.onerror = finish;
+      selectionGongTimerRef.current = window.setTimeout(finish, 2500);
+      void gong.play().catch(finish);
+    });
+  }, [stopSelectionGong]);
 
   const stopPlayback = useCallback(() => {
     playbackTokenRef.current += 1;
@@ -937,12 +987,14 @@ export default function Home() {
     return () => {
       audioRef.current?.pause();
       stopThemeMusic();
+      stopSelectionGong();
       stopCompletionSound();
       releaseAudioEngine();
     };
   }, [
     releaseAudioEngine,
     stopCompletionSound,
+    stopSelectionGong,
     stopThemeMusic,
   ]);
 
@@ -1004,6 +1056,19 @@ export default function Home() {
     if (microphone === "unsupported") setStatus("unsupported");
 
     void playPrompt(newQueue[0]);
+  };
+
+  const selectExam = async (exam: Exam) => {
+    if (examSelectionInProgressRef.current) return;
+    examSelectionInProgressRef.current = true;
+    stopThemeMusic();
+
+    try {
+      await playSelectionGong();
+      await startExam(exam);
+    } finally {
+      examSelectionInProgressRef.current = false;
+    }
   };
 
   const retryMicrophone = async () => {
@@ -1320,7 +1385,7 @@ export default function Home() {
             <button
               key={exam.id}
               className={`exam-card exam-card-${exam.tone}`}
-              onClick={() => void startExam(exam)}
+              onClick={() => void selectExam(exam)}
               style={{ "--card-order": index } as React.CSSProperties}
             >
               <span className="exam-eyebrow">{exam.eyebrow}</span>

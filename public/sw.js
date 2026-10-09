@@ -1,4 +1,4 @@
-const CACHE_NAME = "chien-luoc-trainer-v26";
+const CACHE_NAME = "chien-luoc-trainer-v27";
 
 const SCOPE_URL = new URL("./", self.registration.scope).href;
 
@@ -17,6 +17,7 @@ const PRECACHE_URLS = [
   ),
   "audio/theme.mp3?v=22",
   "audio/fine.mp3?v=22",
+  "audio/gong.mp3?v=27",
 ].map((path) => new URL(path, SCOPE_URL).href);
 
 async function cacheUrl(cache, url) {
