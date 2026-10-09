@@ -163,7 +163,7 @@ test("includes precise voice, playback, and screen-awake support", async () => {
   assert.match(clientSource, /Schermo mantenuto acceso/);
   assert.match(styles, /\.voice-core > \.voice-word/);
   assert.match(styles, /font-size: clamp\(8px, 2\.6vw, 14px\)/);
-  assert.match(styles, /overscroll-behavior: none/);
+  assert.match(styles, /overscroll-behavior-x: none/);
   assert.match(styles, /touch-action: pan-y/);
   assert.match(
     styles,
@@ -178,7 +178,7 @@ test("includes precise voice, playback, and screen-awake support", async () => {
     /calc\(25px \+ env\(safe-area-inset-top, 0px\)\)/,
   );
   assert.doesNotMatch(styles, /\.voice-core > span:not\(\.sound-bars\)/);
-  assert.match(serviceWorker, /chien-luoc-trainer-v25/);
+  assert.match(serviceWorker, /chien-luoc-trainer-v26/);
 });
 
 test("builds a GitHub Pages version with the project base path", async () => {

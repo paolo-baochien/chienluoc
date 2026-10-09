@@ -19,8 +19,6 @@
 html {
   min-height: 100%;
   max-width: 100%;
-  overflow-x: hidden;
-  overscroll-behavior: none;
   background: var(--paper);
 }
 
@@ -28,8 +26,6 @@ body {
   min-height: 100vh;
   max-width: 100%;
   margin: 0;
-  overflow-x: hidden;
-  overscroll-behavior: none;
   background: var(--paper);
   color: var(--ink);
   font-family:
@@ -53,8 +49,9 @@ button:focus-visible {
   width: 100%;
   max-width: 100%;
   min-height: 100svh;
-  overflow: hidden;
-  overscroll-behavior: none;
+  overflow-x: clip;
+  overflow-y: visible;
+  overscroll-behavior-x: none;
   touch-action: pan-y;
   isolation: isolate;
 }
