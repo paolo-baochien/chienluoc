@@ -37,8 +37,9 @@ test("server-renders the Chiến lược trainer", async () => {
   assert.match(html, /4º Đẳng/);
   assert.match(html, /Palestra Bao Lan/);
   assert.match(html, /Paolo Pasquetto · Bao Chien/);
-  assert.match(html, /images\/logo-baolan\.jpg/);
-  assert.match(html, /images\/logo-viet-vo-dao-italia\.png/);
+  assert.match(html, /images\/logo-palestra-baolan\.png/);
+  assert.match(html, /images\/logo-viet-vo-dao\.png/);
+  assert.match(html, /images\/logo-wvvdf\.png/);
   assert.match(html, /https:\/\/paypal\.me\/paolopasquetto/);
   assert.equal((html.match(/Ringraziamenti/g) ?? []).length, 1);
   assert.doesNotMatch(html, />Grazie</);
@@ -105,8 +106,9 @@ test("packages the installable offline app assets", async () => {
       "../dist/client/icons/icon-192.png",
       "../dist/client/icons/icon-512.png",
       "../dist/client/apple-touch-icon.png",
-      "../dist/client/images/logo-baolan.jpg",
-      "../dist/client/images/logo-viet-vo-dao-italia.png",
+      "../dist/client/images/logo-palestra-baolan.png",
+      "../dist/client/images/logo-viet-vo-dao.png",
+      "../dist/client/images/logo-wvvdf.png",
       "../dist/client/og.png",
     ].map(async (path) => (await stat(new URL(path, import.meta.url))).size),
   );
@@ -161,6 +163,8 @@ test("includes precise voice, playback, and screen-awake support", async () => {
   assert.match(clientSource, /Schermo mantenuto acceso/);
   assert.match(styles, /\.voice-core > \.voice-word/);
   assert.match(styles, /font-size: clamp\(8px, 2\.6vw, 14px\)/);
+  assert.match(styles, /overscroll-behavior: none/);
+  assert.match(styles, /touch-action: pan-y/);
   assert.match(
     styles,
     /min-height: calc\(80px \+ env\(safe-area-inset-top, 0px\)\)/,
@@ -174,7 +178,7 @@ test("includes precise voice, playback, and screen-awake support", async () => {
     /calc\(25px \+ env\(safe-area-inset-top, 0px\)\)/,
   );
   assert.doesNotMatch(styles, /\.voice-core > span:not\(\.sound-bars\)/);
-  assert.match(serviceWorker, /chien-luoc-trainer-v24/);
+  assert.match(serviceWorker, /chien-luoc-trainer-v25/);
 });
 
 test("builds a GitHub Pages version with the project base path", async () => {

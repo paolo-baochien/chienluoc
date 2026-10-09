@@ -1266,17 +1266,24 @@ export default function Home() {
         <div className="brand-logos">
           <img
             className="brand-logo"
-            src="images/logo-baolan.jpg"
+            src="images/logo-palestra-baolan.png"
             alt="Logo della Palestra Bao Lan"
-            width="54"
-            height="50"
+            width="62"
+            height="62"
           />
           <img
-            className="brand-logo brand-logo-viet"
-            src="images/logo-viet-vo-dao-italia.png"
-            alt="Logo Việt Võ Đạo Italia"
-            width="52"
-            height="52"
+            className="brand-logo"
+            src="images/logo-viet-vo-dao.png"
+            alt="Logo Việt Võ Đạo"
+            width="62"
+            height="62"
+          />
+          <img
+            className="brand-logo"
+            src="images/logo-wvvdf.png"
+            alt="Logo World Viet Vo Dao Federation"
+            width="62"
+            height="62"
           />
         </div>
         <div className="brand-copy">
@@ -1394,16 +1401,22 @@ export default function Home() {
             <div className="intro-heading">
               <div className="intro-logos" aria-hidden="true">
                 <img
-                  src="images/logo-baolan.jpg"
+                  src="images/logo-palestra-baolan.png"
                   alt=""
-                  width="70"
-                  height="65"
+                  width="72"
+                  height="72"
                 />
                 <img
-                  src="images/logo-viet-vo-dao-italia.png"
+                  src="images/logo-viet-vo-dao.png"
                   alt=""
-                  width="65"
-                  height="65"
+                  width="72"
+                  height="72"
+                />
+                <img
+                  src="images/logo-wvvdf.png"
+                  alt=""
+                  width="72"
+                  height="72"
                 />
               </div>
               <div>

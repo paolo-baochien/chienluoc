@@ -1,12 +1,13 @@
-const CACHE_NAME = "chien-luoc-trainer-v24";
+const CACHE_NAME = "chien-luoc-trainer-v25";
 
 const SCOPE_URL = new URL("./", self.registration.scope).href;
 
 const PRECACHE_URLS = [
   "",
   "manifest.webmanifest",
-  "images/logo-baolan.jpg",
-  "images/logo-viet-vo-dao-italia.png",
+  "images/logo-palestra-baolan.png",
+  "images/logo-viet-vo-dao.png",
+  "images/logo-wvvdf.png",
   "icons/icon-192.png",
   "icons/icon-512.png",
   "apple-touch-icon.png",

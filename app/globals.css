@@ -18,12 +18,18 @@
 
 html {
   min-height: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  overscroll-behavior: none;
   background: var(--paper);
 }
 
 body {
   min-height: 100vh;
+  max-width: 100%;
   margin: 0;
+  overflow-x: hidden;
+  overscroll-behavior: none;
   background: var(--paper);
   color: var(--ink);
   font-family:
@@ -44,8 +50,12 @@ button:focus-visible {
 
 .app-shell {
   position: relative;
+  width: 100%;
+  max-width: 100%;
   min-height: 100svh;
   overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: pan-y;
   isolation: isolate;
 }
 
@@ -76,7 +86,8 @@ button:focus-visible {
   grid-template-columns: minmax(280px, 0.78fr) minmax(560px, 1.35fr);
   grid-template-rows: auto 1fr auto auto;
   gap: 0 6vw;
-  overflow: visible;
+  overflow-x: clip;
+  overflow-y: visible;
   padding:
     calc(34px + env(safe-area-inset-top, 0px))
     clamp(28px, 5vw, 82px)
@@ -113,21 +124,12 @@ button:focus-visible {
 }
 
 .brand-logo {
-  width: 54px;
-  height: 50px;
+  width: clamp(42px, 12vw, 62px);
+  height: clamp(42px, 12vw, 62px);
   flex: 0 0 auto;
-  border: 2px solid rgba(23, 23, 19, 0.72);
   border-radius: 50%;
-  object-fit: cover;
+  object-fit: contain;
   box-shadow: 0 4px 14px rgba(23, 23, 19, 0.12);
-}
-
-.brand-logo-viet {
-  width: 52px;
-  height: 52px;
-  border: 0;
-  background: white;
-  box-shadow: 0 4px 14px rgba(23, 23, 19, 0.1);
 }
 
 .brand-copy {
@@ -566,17 +568,10 @@ button:focus-visible {
 }
 
 .intro-logos img {
-  width: 70px;
-  height: 65px;
-  border: 2px solid rgba(23, 23, 19, 0.72);
+  width: 72px;
+  height: 72px;
   border-radius: 50%;
-  object-fit: cover;
-}
-
-.intro-logos img:last-child {
-  width: 65px;
-  border: 0;
-  background: white;
+  object-fit: contain;
 }
 
 .intro-heading p {
@@ -1293,6 +1288,28 @@ button:focus-visible {
 }
 
 @media (max-width: 620px) {
+  .brand-header {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 10px 12px;
+  }
+
+  .brand-logos {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .brand-copy {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .guide-button {
+    grid-column: 2;
+    grid-row: 1;
+    margin-left: 0;
+  }
+
   .selection-shell::before {
     top: 5vh;
     left: -20vw;
@@ -1381,13 +1398,15 @@ button:focus-visible {
     gap: 5px;
   }
 
-  .intro-logos img {
-    width: 58px;
-    height: 54px;
+  .intro-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
   }
 
-  .intro-logos img:last-child {
+  .intro-logos img {
     width: 54px;
+    height: 54px;
   }
 
   .intro-lead {
