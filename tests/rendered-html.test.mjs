@@ -106,7 +106,7 @@ test("packages the installable offline app assets", async () => {
   assert.match(serviceWorker, /audio\/\$\{index \+ 1\}\.mp3\?v=22/);
   assert.match(serviceWorker, /audio\/theme\.mp3\?v=22/);
   assert.match(serviceWorker, /audio\/fine\.mp3\?v=22/);
-  assert.match(serviceWorker, /audio\/gong\.mp3\?v=27/);
+  assert.match(serviceWorker, /audio\/gong\.mp3\?v=30/);
   assert.match(serviceWorker, /self\.registration\.scope/);
 
   const iconSizes = await Promise.all(
@@ -162,7 +162,7 @@ test("includes precise voice, playback, and screen-awake support", async () => {
   assert.match(clientSource, /window\.addEventListener\("pagehide", pauseThemeMusic\)/);
   assert.match(clientSource, /window\.addEventListener\("pageshow", syncThemeWithPage\)/);
   assert.match(clientSource, /new Audio\("audio\/fine\.mp3\?v=22"\)/);
-  assert.match(clientSource, /new Audio\("audio\/gong\.mp3\?v=27"\)/);
+  assert.match(clientSource, /new Audio\("audio\/gong\.mp3\?v=30"\)/);
   assert.match(clientSource, /onClick=\{\(\) => void selectExam\(exam\)\}/);
   assert.match(clientSource, /audioBufferCacheRef\.current\.get\("fine"\)/);
   assert.match(clientSource, /source\.connect\(context\.destination\)/);
@@ -188,7 +188,7 @@ test("includes precise voice, playback, and screen-awake support", async () => {
     /calc\(25px \+ env\(safe-area-inset-top, 0px\)\)/,
   );
   assert.doesNotMatch(styles, /\.voice-core > span:not\(\.sound-bars\)/);
-  assert.match(serviceWorker, /chien-luoc-trainer-v29/);
+  assert.match(serviceWorker, /chien-luoc-trainer-v30/);
 });
 
 test("builds a GitHub Pages version with the project base path", async () => {

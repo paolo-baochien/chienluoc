@@ -421,7 +421,7 @@ export default function Home() {
     stopSelectionGong();
 
     await new Promise<void>((resolve) => {
-      const gong = new Audio("audio/gong.mp3?v=27");
+      const gong = new Audio("audio/gong.mp3?v=30");
       gong.preload = "auto";
       selectionGongRef.current = gong;
       let finished = false;
