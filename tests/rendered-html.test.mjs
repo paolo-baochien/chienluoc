@@ -40,6 +40,8 @@ test("server-renders the Chiến lược trainer", async () => {
   assert.match(html, /images\/logo-palestra-baolan\.png/);
   assert.match(html, /images\/logo-viet-vo-dao\.png/);
   assert.match(html, /images\/logo-wvvdf\.png/);
+  assert.match(html, />Việt Võ Đạo<\/span>/);
+  assert.doesNotMatch(html, /Bảo Lan · Việt Võ Đạo/);
   assert.match(html, /https:\/\/paypal\.me\/paolopasquetto/);
   assert.equal((html.match(/Ringraziamenti/g) ?? []).length, 1);
   assert.doesNotMatch(html, />Grazie</);
@@ -182,7 +184,7 @@ test("includes precise voice, playback, and screen-awake support", async () => {
     /calc\(25px \+ env\(safe-area-inset-top, 0px\)\)/,
   );
   assert.doesNotMatch(styles, /\.voice-core > span:not\(\.sound-bars\)/);
-  assert.match(serviceWorker, /chien-luoc-trainer-v27/);
+  assert.match(serviceWorker, /chien-luoc-trainer-v28/);
 });
 
 test("builds a GitHub Pages version with the project base path", async () => {

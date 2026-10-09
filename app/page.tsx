@@ -1333,26 +1333,26 @@ export default function Home() {
             className="brand-logo"
             src="images/logo-palestra-baolan.png"
             alt="Logo della Palestra Bao Lan"
-            width="62"
-            height="62"
+            width="186"
+            height="186"
           />
           <img
             className="brand-logo"
             src="images/logo-viet-vo-dao.png"
             alt="Logo Việt Võ Đạo"
-            width="62"
-            height="62"
+            width="186"
+            height="186"
           />
           <img
             className="brand-logo"
             src="images/logo-wvvdf.png"
             alt="Logo World Viet Vo Dao Federation"
-            width="62"
-            height="62"
+            width="186"
+            height="186"
           />
         </div>
         <div className="brand-copy">
-          <span>Bảo Lan · Việt Võ Đạo</span>
+          <span>Việt Võ Đạo</span>
           <strong>Chiến lược trainer</strong>
         </div>
         <button className="guide-button" onClick={() => setShowIntro(true)}>
