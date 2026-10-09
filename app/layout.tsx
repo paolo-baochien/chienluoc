@@ -22,19 +22,19 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
-        url: `${publicBasePath}/icons/icon-192.png`,
+        url: `${publicBasePath}/icons/icon-192.png?v=29`,
         sizes: "192x192",
         type: "image/png",
       },
       {
-        url: `${publicBasePath}/icons/icon-512.png`,
+        url: `${publicBasePath}/icons/icon-512.png?v=29`,
         sizes: "512x512",
         type: "image/png",
       },
     ],
     apple: [
       {
-        url: `${publicBasePath}/apple-touch-icon.png`,
+        url: `${publicBasePath}/apple-touch-icon.png?v=29`,
         sizes: "180x180",
         type: "image/png",
       },

@@ -97,6 +97,10 @@ test("packages the installable offline app assets", async () => {
     manifest.icons.map((icon) => icon.sizes),
     ["192x192", "512x512"],
   );
+  assert.deepEqual(
+    manifest.icons.map((icon) => icon.src),
+    ["icons/icon-192.png?v=29", "icons/icon-512.png?v=29"],
+  );
 
   assert.match(serviceWorker, /Array\.from\(\s*\{ length: 30 \}/);
   assert.match(serviceWorker, /audio\/\$\{index \+ 1\}\.mp3\?v=22/);
@@ -184,7 +188,7 @@ test("includes precise voice, playback, and screen-awake support", async () => {
     /calc\(25px \+ env\(safe-area-inset-top, 0px\)\)/,
   );
   assert.doesNotMatch(styles, /\.voice-core > span:not\(\.sound-bars\)/);
-  assert.match(serviceWorker, /chien-luoc-trainer-v28/);
+  assert.match(serviceWorker, /chien-luoc-trainer-v29/);
 });
 
 test("builds a GitHub Pages version with the project base path", async () => {
