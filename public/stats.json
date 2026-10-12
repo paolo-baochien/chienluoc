@@ -1,0 +1,149 @@
+{
+  "generatedAt": "2026-10-12T14:50:33.316Z",
+  "periods": {
+    "7": {
+      "pageviews": 23,
+      "visitors": 13,
+      "visits": 15,
+      "starts": 1,
+      "completed": 0,
+      "exams": [
+        {
+          "label": "1½ striscia",
+          "value": 1
+        }
+      ],
+      "devices": [
+        {
+          "label": "Computer",
+          "value": 11
+        },
+        {
+          "label": "Smartphone",
+          "value": 2
+        }
+      ],
+      "operatingSystems": [
+        {
+          "label": "Windows 10",
+          "value": 10
+        },
+        {
+          "label": "iOS",
+          "value": 1
+        },
+        {
+          "label": "Mac OS",
+          "value": 1
+        },
+        {
+          "label": "Android OS",
+          "value": 1
+        }
+      ],
+      "series": [
+        {
+          "label": "12 ott",
+          "starts": 1,
+          "completed": 0
+        }
+      ]
+    },
+    "30": {
+      "pageviews": 23,
+      "visitors": 13,
+      "visits": 15,
+      "starts": 1,
+      "completed": 0,
+      "exams": [
+        {
+          "label": "1½ striscia",
+          "value": 1
+        }
+      ],
+      "devices": [
+        {
+          "label": "Computer",
+          "value": 11
+        },
+        {
+          "label": "Smartphone",
+          "value": 2
+        }
+      ],
+      "operatingSystems": [
+        {
+          "label": "Windows 10",
+          "value": 10
+        },
+        {
+          "label": "Mac OS",
+          "value": 1
+        },
+        {
+          "label": "iOS",
+          "value": 1
+        },
+        {
+          "label": "Android OS",
+          "value": 1
+        }
+      ],
+      "series": [
+        {
+          "label": "12 ott",
+          "starts": 1,
+          "completed": 0
+        }
+      ]
+    },
+    "180": {
+      "pageviews": 23,
+      "visitors": 13,
+      "visits": 15,
+      "starts": 1,
+      "completed": 0,
+      "exams": [
+        {
+          "label": "1½ striscia",
+          "value": 1
+        }
+      ],
+      "devices": [
+        {
+          "label": "Computer",
+          "value": 11
+        },
+        {
+          "label": "Smartphone",
+          "value": 2
+        }
+      ],
+      "operatingSystems": [
+        {
+          "label": "Windows 10",
+          "value": 10
+        },
+        {
+          "label": "Mac OS",
+          "value": 1
+        },
+        {
+          "label": "iOS",
+          "value": 1
+        },
+        {
+          "label": "Android OS",
+          "value": 1
+        }
+      ],
+      "series": [
+        {
+          "label": "ott",
+          "starts": 1,
+          "completed": 0
+        }
+      ]
+    }
+  }
+}

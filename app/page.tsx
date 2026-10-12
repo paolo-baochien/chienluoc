@@ -39,6 +39,11 @@ type StatsData = {
   updatedAt: Date;
 };
 
+type StatsSnapshot = {
+  generatedAt: string;
+  periods: Record<string, Omit<StatsData, "updatedAt">>;
+};
+
 type TrainingStatus =
   | "idle"
   | "requesting"
@@ -261,6 +266,22 @@ function StatsDashboard({ onBack }: { onBack: () => void }) {
       setError("");
 
       try {
+        const snapshotResponse = await fetch(
+          `stats.json?period=${period}&v=34`,
+          { cache: "no-store", signal: controller.signal },
+        );
+        if (snapshotResponse.ok) {
+          const snapshot = (await snapshotResponse.json()) as StatsSnapshot;
+          const snapshotData = snapshot.periods[String(period)];
+          if (snapshotData) {
+            setData({
+              ...snapshotData,
+              updatedAt: new Date(snapshot.generatedAt),
+            });
+            return;
+          }
+        }
+
         const shareResponse = await fetch(UMAMI_SHARE_ENDPOINT, {
           cache: "no-store",
           signal: controller.signal,
@@ -1218,7 +1239,7 @@ export default function Home() {
       process.env.NODE_ENV === "production"
     ) {
       void navigator.serviceWorker
-        .register("sw.js?v=33")
+        .register("sw.js?v=34")
         .then(() => navigator.serviceWorker.ready)
         .then(() => setOfflineReady(true))
         .catch(() => setOfflineReady(false));

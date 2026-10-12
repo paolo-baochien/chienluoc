@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+  schedule:
+    - cron: "17 */6 * * *"
   workflow_dispatch:
 
 permissions:
@@ -32,6 +34,8 @@ jobs:
           cache: pnpm
       - name: Installa dipendenze
         run: pnpm install --frozen-lockfile
+      - name: Aggiorna statistiche anonime
+        run: node scripts/update-stats.mjs
       - name: Costruisci app
         run: pnpm build:pages
       - name: Configura GitHub Pages

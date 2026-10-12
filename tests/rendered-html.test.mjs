@@ -193,8 +193,9 @@ test("includes precise voice, playback, and screen-awake support", async () => {
     /calc\(25px \+ env\(safe-area-inset-top, 0px\)\)/,
   );
   assert.doesNotMatch(styles, /\.voice-core > span:not\(\.sound-bars\)/);
-  assert.match(clientSource, /\.register\("sw\.js\?v=33"\)/);
-  assert.match(serviceWorker, /chien-luoc-trainer-v33/);
+  assert.match(clientSource, /\.register\("sw\.js\?v=34"\)/);
+  assert.match(serviceWorker, /chien-luoc-trainer-v34/);
+  assert.match(serviceWorker, /url\.pathname\.endsWith\("\/stats\.json"\)/);
 });
 
 test("includes the anonymous Umami statistics panel", async () => {
@@ -206,10 +207,15 @@ test("includes the anonymous Umami statistics panel", async () => {
     new URL("../app/stats.css", import.meta.url),
     "utf8",
   );
+  const snapshot = JSON.parse(
+    await readFile(new URL("../public/stats.json", import.meta.url), "utf8"),
+  );
 
   assert.match(clientSource, /function StatsDashboard/);
-  assert.match(clientSource, /gateway-eu\.umami\.is\/api\/share/);
-  assert.match(clientSource, /x-umami-share-token/);
+  assert.match(clientSource, /stats\.json\?period=/);
+  assert.ok(snapshot.periods["7"]);
+  assert.ok(snapshot.periods["30"]);
+  assert.ok(snapshot.periods["180"]);
   assert.match(clientSource, /Dati anonimi/);
   assert.match(clientSource, /Esami più utilizzati/);
   assert.doesNotMatch(clientSource, /UMAMI_API_KEY|password|client_secret/);
