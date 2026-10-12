@@ -12,6 +12,33 @@ type Exam = {
   tone: "light" | "dark" | "red";
 };
 
+type AppScreen = "select" | "training" | "complete" | "stats";
+type StatsPeriod = 7 | 30 | 180;
+
+type StatsPoint = {
+  label: string;
+  starts: number;
+  completed: number;
+};
+
+type StatsBreakdown = {
+  label: string;
+  value: number;
+};
+
+type StatsData = {
+  visitors: number;
+  visits: number;
+  pageviews: number;
+  starts: number;
+  completed: number;
+  exams: StatsBreakdown[];
+  devices: StatsBreakdown[];
+  operatingSystems: StatsBreakdown[];
+  series: StatsPoint[];
+  updatedAt: Date;
+};
+
 type TrainingStatus =
   | "idle"
   | "requesting"
@@ -67,6 +94,12 @@ declare global {
     SpeechRecognition?: SpeechRecognitionConstructor;
     webkitSpeechRecognition?: SpeechRecognitionConstructor;
     webkitAudioContext?: typeof AudioContext;
+    umami?: {
+      track: (
+        eventName: string,
+        eventData?: Record<string, string | number | boolean>,
+      ) => void;
+    };
   }
 
   interface Navigator {
@@ -135,6 +168,11 @@ const EXAMS: Exam[] = [
 
 const WAKE_WORDS = ["prossimo"];
 
+const UMAMI_SHARE_URL = "https://cloud.umami.is/share/ol3UrBnUcB6U2QLp";
+const UMAMI_SHARE_ENDPOINT =
+  "https://gateway-eu.umami.is/api/share/ol3UrBnUcB6U2QLp";
+const UMAMI_API_BASE = "https://gateway-eu.umami.is/api";
+
 const INTRO_STORAGE_KEY = "chien-luoc-intro-seen-v1";
 const AUDIO_ROUTE_SETTLE_MS = 420;
 
@@ -193,10 +231,386 @@ function setMediaElementVolume(audio: HTMLAudioElement, volume: number) {
   audio.volume = volume;
 }
 
-export default function Home() {
-  const [screen, setScreen] = useState<"select" | "training" | "complete">(
-    "select",
+function trackAnonymousEvent(
+  eventName: string,
+  eventData?: Record<string, string | number | boolean>,
+) {
+  try {
+    window.umami?.track(eventName, eventData);
+  } catch {
+    // Le statistiche non devono mai interferire con l'allenamento.
+  }
+}
+
+function formatStatsNumber(value: number) {
+  return new Intl.NumberFormat("it-IT").format(value);
+}
+
+function StatsDashboard({ onBack }: { onBack: () => void }) {
+  const [period, setPeriod] = useState<StatsPeriod>(30);
+  const [data, setData] = useState<StatsData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const loadStats = async () => {
+      setLoading(true);
+      setError("");
+
+      try {
+        const shareResponse = await fetch(UMAMI_SHARE_ENDPOINT, {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        if (!shareResponse.ok) throw new Error("Condivisione non disponibile");
+
+        const share = (await shareResponse.json()) as {
+          websiteId: string;
+          token: string;
+        };
+        const endAt = Date.now();
+        const startAt = endAt - period * 24 * 60 * 60 * 1000;
+        const timezone =
+          Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Rome";
+        const headers = {
+          "x-umami-share-token": share.token,
+          "x-umami-share-context": "1",
+        };
+
+        const request = async <T,>(path: string, params: URLSearchParams) => {
+          const response = await fetch(
+            `${UMAMI_API_BASE}/websites/${share.websiteId}${path}?${params}`,
+            { cache: "no-store", headers, signal: controller.signal },
+          );
+          if (!response.ok) throw new Error("Statistiche non disponibili");
+          return (await response.json()) as T;
+        };
+
+        const baseParams = () =>
+          new URLSearchParams({
+            startAt: String(startAt),
+            endAt: String(endAt),
+          });
+        const startParams = baseParams();
+        startParams.set("event", "exam_start");
+        const completeParams = baseParams();
+        completeParams.set("event", "exam_complete");
+        const seriesParams = baseParams();
+        seriesParams.set("unit", period === 180 ? "month" : "day");
+        seriesParams.set("timezone", timezone);
+        const examParams = baseParams();
+        examParams.set("event", "exam_start");
+        examParams.set("propertyName", "exam");
+        const deviceParams = baseParams();
+        deviceParams.set("type", "device");
+        const osParams = baseParams();
+        osParams.set("type", "os");
+
+        const [
+          overview,
+          started,
+          completed,
+          eventSeries,
+          examValues,
+          deviceValues,
+          osValues,
+        ] = await Promise.all([
+          request<{
+            pageviews: number;
+            visitors: number;
+            visits: number;
+          }>("/stats", baseParams()),
+          request<{ data: { events: number } }>("/events/stats", startParams),
+          request<{ data: { events: number } }>(
+            "/events/stats",
+            completeParams,
+          ),
+          request<Array<{ x: string; t: string; y: number }>>(
+            "/events/series",
+            seriesParams,
+          ),
+          request<Array<{ value: string; total: number }>>(
+            "/event-data/values",
+            examParams,
+          ),
+          request<Array<{ x: string; y: number }>>("/metrics", deviceParams),
+          request<Array<{ x: string; y: number }>>("/metrics", osParams),
+        ]);
+
+        const examNames = new Map(EXAMS.map((exam) => [exam.id, exam.title]));
+        const deviceNames: Record<string, string> = {
+          desktop: "Computer",
+          laptop: "Computer",
+          mobile: "Smartphone",
+          tablet: "Tablet",
+        };
+        const seriesByDate = new Map<
+          string,
+          { date: Date; starts: number; completed: number }
+        >();
+
+        eventSeries.forEach((point) => {
+          if (point.x !== "exam_start" && point.x !== "exam_complete") return;
+          const date = new Date(point.t);
+          const key = date.toISOString();
+          const current = seriesByDate.get(key) ?? {
+            date,
+            starts: 0,
+            completed: 0,
+          };
+          if (point.x === "exam_start") current.starts += point.y;
+          if (point.x === "exam_complete") current.completed += point.y;
+          seriesByDate.set(key, current);
+        });
+
+        const series = [...seriesByDate.values()]
+          .sort((left, right) => left.date.getTime() - right.date.getTime())
+          .slice(period === 180 ? -6 : -10)
+          .map((point) => ({
+            label: new Intl.DateTimeFormat("it-IT", {
+              day: period === 180 ? undefined : "numeric",
+              month: "short",
+            }).format(point.date),
+            starts: point.starts,
+            completed: point.completed,
+          }));
+
+        setData({
+          pageviews: overview.pageviews ?? 0,
+          visitors: overview.visitors ?? 0,
+          visits: overview.visits ?? 0,
+          starts: started.data.events ?? 0,
+          completed: completed.data.events ?? 0,
+          exams: examValues
+            .map((item) => ({
+              label: examNames.get(item.value) ?? item.value,
+              value: item.total,
+            }))
+            .sort((left, right) => right.value - left.value),
+          devices: deviceValues
+            .map((item) => ({
+              label: deviceNames[item.x.toLowerCase()] ?? item.x,
+              value: item.y,
+            }))
+            .sort((left, right) => right.value - left.value),
+          operatingSystems: osValues
+            .map((item) => ({ label: item.x, value: item.y }))
+            .sort((left, right) => right.value - left.value),
+          series,
+          updatedAt: new Date(),
+        });
+      } catch (statsError) {
+        if ((statsError as Error).name !== "AbortError") {
+          setError(
+            navigator.onLine
+              ? "Non riesco a caricare le statistiche in questo momento."
+              : "Connettiti a Internet per visualizzare le statistiche.",
+          );
+        }
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    };
+
+    void loadStats();
+    return () => controller.abort();
+  }, [period, reloadKey]);
+
+  const completionRate = data?.starts
+    ? Math.min(100, Math.round((data.completed / data.starts) * 100))
+    : 0;
+  const chartMaximum = Math.max(
+    1,
+    ...(data?.series.flatMap((point) => [point.starts, point.completed]) ?? []),
   );
+  const examMaximum = Math.max(1, ...(data?.exams.map((item) => item.value) ?? []));
+
+  return (
+    <main className="app-shell stats-shell">
+      <div className="grain" aria-hidden="true" />
+      <header className="stats-header">
+        <button className="stats-back" onClick={onBack} aria-label="Torna agli esami">
+          ←
+        </button>
+        <div>
+          <span>Chiến lược Trainer</span>
+          <strong>Statistiche</strong>
+        </div>
+        <span className="stats-privacy">
+          <i aria-hidden="true" /> Dati anonimi
+        </span>
+      </header>
+
+      <section className="stats-content">
+        <div className="stats-intro">
+          <div>
+            <p className="overline">Utilizzo dell’app</p>
+            <h1>Come viene usato l’allenamento.</h1>
+          </div>
+          <a href={UMAMI_SHARE_URL} target="_blank" rel="noreferrer">
+            Apri dettagli Umami ↗
+          </a>
+        </div>
+
+        <div className="stats-periods" aria-label="Intervallo temporale">
+          {([7, 30, 180] as StatsPeriod[]).map((days) => (
+            <button
+              key={days}
+              className={period === days ? "is-active" : undefined}
+              onClick={() => setPeriod(days)}
+              aria-pressed={period === days}
+            >
+              {days === 180 ? "6 mesi" : `${days} giorni`}
+            </button>
+          ))}
+        </div>
+
+        {loading ? (
+          <div className="stats-message" role="status">
+            <span className="stats-loader" aria-hidden="true" />
+            Caricamento delle statistiche…
+          </div>
+        ) : error ? (
+          <div className="stats-message stats-error" role="alert">
+            <strong>{error}</strong>
+            <button onClick={() => setReloadKey((value) => value + 1)}>
+              Riprova
+            </button>
+          </div>
+        ) : data ? (
+          <>
+            <section className="stats-kpis" aria-label="Dati principali">
+              <article>
+                <span>Utenti</span>
+                <strong>{formatStatsNumber(data.visitors)}</strong>
+                <small>visitatori stimati</small>
+              </article>
+              <article>
+                <span>Visite</span>
+                <strong>{formatStatsNumber(data.visits)}</strong>
+                <small>{formatStatsNumber(data.pageviews)} aperture</small>
+              </article>
+              <article>
+                <span>Avviate</span>
+                <strong>{formatStatsNumber(data.starts)}</strong>
+                <small>interrogazioni</small>
+              </article>
+              <article className="stats-kpi-highlight">
+                <span>Completate</span>
+                <strong>{formatStatsNumber(data.completed)}</strong>
+                <small>sessioni concluse</small>
+              </article>
+            </section>
+
+            <div className="stats-grid">
+              <section className="stats-panel stats-trend" aria-labelledby="trend-title">
+                <div className="stats-panel-heading">
+                  <h2 id="trend-title">Andamento</h2>
+                  <span>{period === 180 ? "ultimi 6 mesi" : `ultimi ${period} giorni`}</span>
+                </div>
+                {data.series.length ? (
+                  <>
+                    <div className="stats-chart" aria-label="Interrogazioni avviate e completate">
+                      {data.series.map((point) => (
+                        <div className="stats-chart-group" key={point.label}>
+                          <div className="stats-chart-bars">
+                            <i
+                              className="stats-bar-start"
+                              style={{ height: `${Math.max(4, (point.starts / chartMaximum) * 100)}%` }}
+                              title={`${point.starts} avviate`}
+                            />
+                            <i
+                              className="stats-bar-complete"
+                              style={{ height: `${Math.max(point.completed ? 4 : 0, (point.completed / chartMaximum) * 100)}%` }}
+                              title={`${point.completed} completate`}
+                            />
+                          </div>
+                          <span>{point.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="stats-legend">
+                      <span><i /> Avviate</span>
+                      <span><i className="complete" /> Completate</span>
+                    </div>
+                  </>
+                ) : (
+                  <p className="stats-empty">I primi dati appariranno dopo l’avvio di un’interrogazione.</p>
+                )}
+              </section>
+
+              <section className="stats-panel stats-completion" aria-labelledby="completion-title">
+                <div className="stats-panel-heading">
+                  <h2 id="completion-title">Completamento</h2>
+                </div>
+                <strong>{completionRate}%</strong>
+                <span>arriva alla fine</span>
+                <div
+                  className="stats-progress"
+                  role="progressbar"
+                  aria-label="Tasso di completamento"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={completionRate}
+                >
+                  <i style={{ width: `${completionRate}%` }} />
+                </div>
+                <div className="stats-progress-labels">
+                  <span>{formatStatsNumber(data.starts)} avviate</span>
+                  <span>{formatStatsNumber(data.completed)} completate</span>
+                </div>
+              </section>
+
+              <section className="stats-panel stats-ranking" aria-labelledby="ranking-title">
+                <div className="stats-panel-heading">
+                  <h2 id="ranking-title">Esami più utilizzati</h2>
+                  <span>interrogazioni avviate</span>
+                </div>
+                {data.exams.length ? (
+                  <div className="stats-rank-list">
+                    {data.exams.map((exam) => (
+                      <div className="stats-rank-row" key={exam.label}>
+                        <span>{exam.label}</span>
+                        <div><i style={{ width: `${(exam.value / examMaximum) * 100}%` }} /></div>
+                        <strong>{formatStatsNumber(exam.value)}</strong>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="stats-empty">Nessun esame avviato nel periodo selezionato.</p>
+                )}
+              </section>
+
+              <section className="stats-panel stats-devices" aria-labelledby="devices-title">
+                <div className="stats-panel-heading">
+                  <h2 id="devices-title">Dispositivi</h2>
+                </div>
+                <div className="stats-breakdowns">
+                  {[...data.devices, ...data.operatingSystems].slice(0, 6).map((item) => (
+                    <div key={`${item.label}-${item.value}`}>
+                      <span>{item.label}</span>
+                      <strong>{formatStatsNumber(item.value)}</strong>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            </div>
+
+            <p className="stats-updated">
+              Aggiornato alle {data.updatedAt.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}
+            </p>
+          </>
+        ) : null}
+      </section>
+    </main>
+  );
+}
+
+export default function Home() {
+  const [screen, setScreen] = useState<AppScreen>("select");
   const [selectedExam, setSelectedExam] = useState<Exam | null>(null);
   const [queue, setQueue] = useState<number[]>([]);
   const [position, setPosition] = useState(0);
@@ -753,6 +1167,9 @@ export default function Home() {
         1,
         Math.round((window.performance.now() - startedAtRef.current) / 1000),
       );
+      if (selectedExam) {
+        trackAnonymousEvent("exam_complete", { exam: selectedExam.id });
+      }
       setElapsedSeconds(seconds);
       setStatus("idle");
       setScreen("complete");
@@ -770,6 +1187,7 @@ export default function Home() {
     playCompletionSound,
     releaseScreenWakeLock,
     screen,
+    selectedExam,
     stopPlayback,
     stopRecognition,
   ]);
@@ -800,7 +1218,7 @@ export default function Home() {
       process.env.NODE_ENV === "production"
     ) {
       void navigator.serviceWorker
-        .register("sw.js")
+        .register("sw.js?v=33")
         .then(() => navigator.serviceWorker.ready)
         .then(() => setOfflineReady(true))
         .catch(() => setOfflineReady(false));
@@ -1049,6 +1467,7 @@ export default function Home() {
     startedAtRef.current = window.performance.now();
     shouldKeepScreenAwakeRef.current = true;
     void requestScreenWakeLock();
+    trackAnonymousEvent("exam_start", { exam: exam.id });
 
     await audioContextReady.catch(() => null);
     const microphone = await requestMicrophone();
@@ -1153,6 +1572,10 @@ export default function Home() {
     denied: "Autorizza il microfono nelle impostazioni del browser.",
     error: "Non riesco ad ascoltare. Usa “Avanti” o riprova.",
   }[status];
+
+  if (screen === "stats") {
+    return <StatsDashboard onBack={() => setScreen("select")} />;
+  }
 
   if (screen === "complete" && selectedExam) {
     return (
@@ -1355,10 +1778,19 @@ export default function Home() {
           <span>Việt Võ Đạo</span>
           <strong>Chiến lược trainer</strong>
         </div>
-        <button className="guide-button" onClick={() => setShowIntro(true)}>
-          <span aria-hidden="true">?</span>
-          Come funziona
-        </button>
+        <div className="header-actions">
+          <button
+            className="guide-button stats-nav-button"
+            onClick={() => setScreen("stats")}
+          >
+            <span aria-hidden="true">▥</span>
+            Statistiche
+          </button>
+          <button className="guide-button" onClick={() => setShowIntro(true)}>
+            <span aria-hidden="true">?</span>
+            Come funziona
+          </button>
+        </div>
       </header>
 
       <section className="hero-copy">

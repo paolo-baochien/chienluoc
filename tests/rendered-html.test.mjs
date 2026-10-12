@@ -43,6 +43,9 @@ test("server-renders the Chiến lược trainer", async () => {
   assert.match(html, />Việt Võ Đạo<\/span>/);
   assert.doesNotMatch(html, /Bảo Lan · Việt Võ Đạo/);
   assert.match(html, /https:\/\/paypal\.me\/paolopasquetto/);
+  assert.match(html, /https:\/\/cloud\.umami\.is\/script\.js/);
+  assert.match(html, /1ccb1211-a681-44e1-a8ef-5fc98a656dcf/);
+  assert.match(html, />\s*Statistiche\s*</);
   assert.equal((html.match(/Ringraziamenti/g) ?? []).length, 1);
   assert.doesNotMatch(html, />Grazie</);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/i);
@@ -167,6 +170,8 @@ test("includes precise voice, playback, and screen-awake support", async () => {
   assert.match(clientSource, /audioBufferCacheRef\.current\.get\("fine"\)/);
   assert.match(clientSource, /source\.connect\(context\.destination\)/);
   assert.match(clientSource, /void playCompletionSound\(\)/);
+  assert.match(clientSource, /trackAnonymousEvent\("exam_start"/);
+  assert.match(clientSource, /trackAnonymousEvent\("exam_complete"/);
   assert.match(clientSource, /navigator\.wakeLock\.request\("screen"\)/);
   assert.match(clientSource, /visibilitychange/);
   assert.match(clientSource, /wakeLock\.release\(\)/);
@@ -188,7 +193,29 @@ test("includes precise voice, playback, and screen-awake support", async () => {
     /calc\(25px \+ env\(safe-area-inset-top, 0px\)\)/,
   );
   assert.doesNotMatch(styles, /\.voice-core > span:not\(\.sound-bars\)/);
-  assert.match(serviceWorker, /chien-luoc-trainer-v30/);
+  assert.match(clientSource, /\.register\("sw\.js\?v=33"\)/);
+  assert.match(serviceWorker, /chien-luoc-trainer-v33/);
+});
+
+test("includes the anonymous Umami statistics panel", async () => {
+  const clientSource = await readFile(
+    new URL("../app/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const styles = await readFile(
+    new URL("../app/stats.css", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(clientSource, /function StatsDashboard/);
+  assert.match(clientSource, /gateway-eu\.umami\.is\/api\/share/);
+  assert.match(clientSource, /x-umami-share-token/);
+  assert.match(clientSource, /Dati anonimi/);
+  assert.match(clientSource, /Esami più utilizzati/);
+  assert.doesNotMatch(clientSource, /UMAMI_API_KEY|password|client_secret/);
+  assert.match(styles, /\.stats-kpis/);
+  assert.match(styles, /env\(safe-area-inset-top, 0px\)/);
+  assert.match(styles, /@media \(max-width: 620px\)/);
 });
 
 test("builds a GitHub Pages version with the project base path", async () => {

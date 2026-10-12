@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./stats.css";
 
 :root {
   --ink: #171713;
