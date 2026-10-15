@@ -172,6 +172,17 @@ test("includes precise voice, playback, and screen-awake support", async () => {
   assert.match(clientSource, /void playCompletionSound\(\)/);
   assert.match(clientSource, /trackAnonymousEvent\("exam_start"/);
   assert.match(clientSource, /trackAnonymousEvent\("exam_complete"/);
+  assert.match(clientSource, /chien-luoc-analytics-queue-v1/);
+  assert.match(clientSource, /flushPendingAnonymousEvents/);
+  assert.match(clientSource, /window\.localStorage\.setItem/);
+  assert.match(clientSource, /window\.addEventListener\("online", updateConnection\)/);
+  assert.match(clientSource, /trackerScript\?\.addEventListener\("load", tryFlushAnalytics\)/);
+  assert.match(clientSource, /const ensureAnalyticsTracker = \(\) =>/);
+  assert.match(clientSource, /document\.head\.appendChild\(retryScript\)/);
+  assert.match(clientSource, /retryScript\.dataset\.domains = "paolo-baochien\.github\.io"/);
+  assert.match(clientSource, /navigator\.serviceWorker\?\.addEventListener/);
+  assert.match(clientSource, /"controllerchange"/);
+  assert.match(clientSource, /registration\.update\(\)/);
   assert.match(clientSource, /navigator\.wakeLock\.request\("screen"\)/);
   assert.match(clientSource, /visibilitychange/);
   assert.match(clientSource, /wakeLock\.release\(\)/);
@@ -193,8 +204,8 @@ test("includes precise voice, playback, and screen-awake support", async () => {
     /calc\(25px \+ env\(safe-area-inset-top, 0px\)\)/,
   );
   assert.doesNotMatch(styles, /\.voice-core > span:not\(\.sound-bars\)/);
-  assert.match(clientSource, /\.register\("sw\.js\?v=34"\)/);
-  assert.match(serviceWorker, /chien-luoc-trainer-v34/);
+  assert.match(clientSource, /\.register\(`sw\.js\?v=\$\{APP_VERSION\}`\)/);
+  assert.match(serviceWorker, /chien-luoc-trainer-v35/);
   assert.match(serviceWorker, /url\.pathname\.endsWith\("\/stats\.json"\)/);
 });
 

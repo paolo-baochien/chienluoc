@@ -78,9 +78,11 @@ export default function RootLayout({
     <html lang="it">
       <head>
         <script
+          id="umami-tracker"
           defer
           src="https://cloud.umami.is/script.js"
           data-website-id="1ccb1211-a681-44e1-a8ef-5fc98a656dcf"
+          data-domains="paolo-baochien.github.io"
         />
       </head>
       <body>{children}</body>

@@ -103,7 +103,7 @@ declare global {
       track: (
         eventName: string,
         eventData?: Record<string, string | number | boolean>,
-      ) => void;
+      ) => unknown | Promise<unknown>;
     };
   }
 
@@ -179,7 +179,20 @@ const UMAMI_SHARE_ENDPOINT =
 const UMAMI_API_BASE = "https://gateway-eu.umami.is/api";
 
 const INTRO_STORAGE_KEY = "chien-luoc-intro-seen-v1";
+const ANALYTICS_QUEUE_KEY = "chien-luoc-analytics-queue-v1";
+const ANALYTICS_QUEUE_LIMIT = 50;
+const APP_VERSION = "35";
+const SERVICE_WORKER_RELOAD_KEY = "chien-luoc-sw-reloaded";
 const AUDIO_ROUTE_SETTLE_MS = 420;
+
+type PendingAnonymousEvent = {
+  id: string;
+  name: string;
+  data?: Record<string, string | number | boolean>;
+  queuedAt: number;
+};
+
+let analyticsFlushPromise: Promise<void> | null = null;
 
 function shuffle(max: number) {
   const values = Array.from({ length: max }, (_, index) => index + 1);
@@ -236,15 +249,95 @@ function setMediaElementVolume(audio: HTMLAudioElement, volume: number) {
   audio.volume = volume;
 }
 
+function readPendingAnonymousEvents(): PendingAnonymousEvent[] {
+  try {
+    const stored = window.localStorage.getItem(ANALYTICS_QUEUE_KEY);
+    if (!stored) return [];
+
+    const parsed = JSON.parse(stored) as PendingAnonymousEvent[];
+    return Array.isArray(parsed) ? parsed.slice(-ANALYTICS_QUEUE_LIMIT) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writePendingAnonymousEvents(events: PendingAnonymousEvent[]) {
+  try {
+    if (events.length === 0) {
+      window.localStorage.removeItem(ANALYTICS_QUEUE_KEY);
+      return true;
+    }
+
+    window.localStorage.setItem(
+      ANALYTICS_QUEUE_KEY,
+      JSON.stringify(events.slice(-ANALYTICS_QUEUE_LIMIT)),
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function createAnonymousEventId() {
+  try {
+    return window.crypto.randomUUID();
+  } catch {
+    return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  }
+}
+
+async function flushPendingAnonymousEvents() {
+  if (analyticsFlushPromise) return analyticsFlushPromise;
+  if (!navigator.onLine || !window.umami?.track) return;
+
+  analyticsFlushPromise = (async () => {
+    const pending = readPendingAnonymousEvents();
+
+    for (const event of pending) {
+      if (!navigator.onLine || !window.umami?.track) break;
+
+      try {
+        await Promise.resolve(window.umami.track(event.name, event.data));
+        const remaining = readPendingAnonymousEvents().filter(
+          (queuedEvent) => queuedEvent.id !== event.id,
+        );
+        writePendingAnonymousEvents(remaining);
+      } catch {
+        break;
+      }
+    }
+  })().finally(() => {
+    analyticsFlushPromise = null;
+  });
+
+  return analyticsFlushPromise;
+}
+
 function trackAnonymousEvent(
   eventName: string,
   eventData?: Record<string, string | number | boolean>,
 ) {
-  try {
-    window.umami?.track(eventName, eventData);
-  } catch {
-    // Le statistiche non devono mai interferire con l'allenamento.
+  const event: PendingAnonymousEvent = {
+    id: createAnonymousEventId(),
+    name: eventName,
+    data: eventData,
+    queuedAt: Date.now(),
+  };
+
+  const pending = [...readPendingAnonymousEvents(), event].slice(
+    -ANALYTICS_QUEUE_LIMIT,
+  );
+
+  if (!writePendingAnonymousEvents(pending)) {
+    try {
+      void window.umami?.track(eventName, eventData);
+    } catch {
+      // Le statistiche non devono mai interferire con l'allenamento.
+    }
+    return;
   }
+
+  void flushPendingAnonymousEvents();
 }
 
 function formatStatsNumber(value: number) {
@@ -267,7 +360,7 @@ function StatsDashboard({ onBack }: { onBack: () => void }) {
 
       try {
         const snapshotResponse = await fetch(
-          `stats.json?period=${period}&v=34`,
+          `stats.json?period=${period}&v=${APP_VERSION}`,
           { cache: "no-store", signal: controller.signal },
         );
         if (snapshotResponse.ok) {
@@ -670,6 +763,8 @@ export default function Home() {
   const pausedRef = useRef(false);
   const queueRef = useRef<number[]>([]);
   const positionRef = useRef(0);
+  const screenRef = useRef<AppScreen>("select");
+  const reloadWhenSafeRef = useRef(false);
   const advanceRef = useRef<() => void>(() => undefined);
   const startedAtRef = useRef(0);
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
@@ -1218,6 +1313,16 @@ export default function Home() {
   }, [advance]);
 
   useEffect(() => {
+    screenRef.current = screen;
+
+    if (screen !== "training" && reloadWhenSafeRef.current) {
+      reloadWhenSafeRef.current = false;
+      window.sessionStorage.setItem(SERVICE_WORKER_RELOAD_KEY, APP_VERSION);
+      window.location.reload();
+    }
+  }, [screen]);
+
+  useEffect(() => {
     let shouldShowIntro = false;
     try {
       shouldShowIntro = !window.localStorage.getItem(INTRO_STORAGE_KEY);
@@ -1229,26 +1334,109 @@ export default function Home() {
       0,
     );
 
-    const updateConnection = () => setIsOnline(navigator.onLine);
+    let trackerRetryScript: HTMLScriptElement | null = null;
+
+    const tryFlushAnalytics = () => {
+      void flushPendingAnonymousEvents();
+    };
+    const ensureAnalyticsTracker = () => {
+      if (window.umami?.track) {
+        tryFlushAnalytics();
+        return;
+      }
+
+      if (!navigator.onLine || trackerRetryScript?.isConnected) return;
+
+      const retryScript = document.createElement("script");
+      retryScript.async = true;
+      retryScript.src = `https://cloud.umami.is/script.js?retry=${APP_VERSION}`;
+      retryScript.dataset.websiteId = "1ccb1211-a681-44e1-a8ef-5fc98a656dcf";
+      retryScript.dataset.domains = "paolo-baochien.github.io";
+      retryScript.addEventListener("load", tryFlushAnalytics, { once: true });
+      retryScript.addEventListener(
+        "error",
+        () => {
+          retryScript.remove();
+          if (trackerRetryScript === retryScript) trackerRetryScript = null;
+        },
+        { once: true },
+      );
+      trackerRetryScript = retryScript;
+      document.head.appendChild(retryScript);
+    };
+    const handleVisibilityForAnalytics = () => {
+      if (document.visibilityState === "visible") ensureAnalyticsTracker();
+    };
+    const updateConnection = () => {
+      setIsOnline(navigator.onLine);
+      if (navigator.onLine && document.readyState === "complete") {
+        ensureAnalyticsTracker();
+      }
+    };
     updateConnection();
     window.addEventListener("online", updateConnection);
     window.addEventListener("offline", updateConnection);
+    window.addEventListener("pageshow", ensureAnalyticsTracker);
+    document.addEventListener("visibilitychange", handleVisibilityForAnalytics);
+
+    const trackerScript = document.getElementById("umami-tracker");
+    trackerScript?.addEventListener("load", tryFlushAnalytics);
+    const analyticsRetryTimer = window.setInterval(
+      ensureAnalyticsTracker,
+      5_000,
+    );
+
+    const handleControllerChange = () => {
+      if (
+        window.sessionStorage.getItem(SERVICE_WORKER_RELOAD_KEY) === APP_VERSION
+      ) {
+        return;
+      }
+
+      if (screenRef.current === "training") {
+        reloadWhenSafeRef.current = true;
+        return;
+      }
+
+      window.sessionStorage.setItem(SERVICE_WORKER_RELOAD_KEY, APP_VERSION);
+      window.location.reload();
+    };
+
+    navigator.serviceWorker?.addEventListener(
+      "controllerchange",
+      handleControllerChange,
+    );
 
     if (
       "serviceWorker" in navigator &&
       process.env.NODE_ENV === "production"
     ) {
       void navigator.serviceWorker
-        .register("sw.js?v=34")
-        .then(() => navigator.serviceWorker.ready)
+        .register(`sw.js?v=${APP_VERSION}`)
+        .then(async (registration) => {
+          await registration.update();
+          return navigator.serviceWorker.ready;
+        })
         .then(() => setOfflineReady(true))
         .catch(() => setOfflineReady(false));
     }
 
     return () => {
       window.clearTimeout(introTimer);
+      window.clearInterval(analyticsRetryTimer);
       window.removeEventListener("online", updateConnection);
       window.removeEventListener("offline", updateConnection);
+      window.removeEventListener("pageshow", ensureAnalyticsTracker);
+      document.removeEventListener(
+        "visibilitychange",
+        handleVisibilityForAnalytics,
+      );
+      trackerScript?.removeEventListener("load", tryFlushAnalytics);
+      trackerRetryScript?.remove();
+      navigator.serviceWorker?.removeEventListener(
+        "controllerchange",
+        handleControllerChange,
+      );
     };
   }, []);
 
