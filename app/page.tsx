@@ -99,12 +99,6 @@ declare global {
     SpeechRecognition?: SpeechRecognitionConstructor;
     webkitSpeechRecognition?: SpeechRecognitionConstructor;
     webkitAudioContext?: typeof AudioContext;
-    umami?: {
-      track: (
-        eventName: string,
-        eventData?: Record<string, string | number | boolean>,
-      ) => unknown | Promise<unknown>;
-    };
   }
 
   interface Navigator {
@@ -180,14 +174,17 @@ const UMAMI_API_BASE = "https://gateway-eu.umami.is/api";
 
 const INTRO_STORAGE_KEY = "chien-luoc-intro-seen-v1";
 const ANALYTICS_QUEUE_KEY = "chien-luoc-analytics-queue-v1";
+const ANALYTICS_SESSION_KEY = "chien-luoc-analytics-session-v1";
 const ANALYTICS_QUEUE_LIMIT = 50;
-const APP_VERSION = "35";
+const UMAMI_WEBSITE_ID = "1ccb1211-a681-44e1-a8ef-5fc98a656dcf";
+const UMAMI_COLLECT_ENDPOINT = "https://gateway.umami.is/api/send";
+const APP_VERSION = "36";
 const SERVICE_WORKER_RELOAD_KEY = "chien-luoc-sw-reloaded";
 const AUDIO_ROUTE_SETTLE_MS = 420;
 
 type PendingAnonymousEvent = {
   id: string;
-  name: string;
+  name?: string;
   data?: Record<string, string | number | boolean>;
   queuedAt: number;
 };
@@ -286,18 +283,78 @@ function createAnonymousEventId() {
   }
 }
 
+async function sendPendingAnonymousEvent(event: PendingAnonymousEvent) {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 12_000);
+
+  try {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      "x-umami-website-id": UMAMI_WEBSITE_ID,
+      "x-umami-hostname": window.location.hostname,
+    };
+
+    try {
+      const sessionCache = window.sessionStorage.getItem(ANALYTICS_SESSION_KEY);
+      if (sessionCache) headers["x-umami-cache"] = sessionCache;
+    } catch {
+      // Umami crea comunque una sessione se sessionStorage non è disponibile.
+    }
+
+    const response = await fetch(UMAMI_COLLECT_ENDPOINT, {
+      method: "POST",
+      cache: "no-store",
+      keepalive: true,
+      signal: controller.signal,
+      headers,
+      body: JSON.stringify({
+        type: "event",
+        payload: {
+          website: UMAMI_WEBSITE_ID,
+          hostname: window.location.hostname,
+          screen: `${window.screen.width}x${window.screen.height}`,
+          language: window.navigator.language,
+          title: document.title,
+          url: `${window.location.pathname}${window.location.search}`,
+          referrer: document.referrer,
+          timestamp: Math.floor(event.queuedAt / 1000),
+          ...(event.name ? { name: event.name } : {}),
+          ...(event.data ? { data: event.data } : {}),
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Umami ha risposto con ${response.status}`);
+    }
+
+    const result = (await response.json().catch(() => null)) as
+      | { cache?: string }
+      | null;
+    if (result?.cache) {
+      try {
+        window.sessionStorage.setItem(ANALYTICS_SESSION_KEY, result.cache);
+      } catch {
+        // La ricezione è confermata anche se il token non può essere salvato.
+      }
+    }
+  } finally {
+    window.clearTimeout(timeout);
+  }
+}
+
 async function flushPendingAnonymousEvents() {
   if (analyticsFlushPromise) return analyticsFlushPromise;
-  if (!navigator.onLine || !window.umami?.track) return;
+  if (!navigator.onLine) return;
 
   analyticsFlushPromise = (async () => {
     const pending = readPendingAnonymousEvents();
 
     for (const event of pending) {
-      if (!navigator.onLine || !window.umami?.track) break;
+      if (!navigator.onLine) break;
 
       try {
-        await Promise.resolve(window.umami.track(event.name, event.data));
+        await sendPendingAnonymousEvent(event);
         const remaining = readPendingAnonymousEvents().filter(
           (queuedEvent) => queuedEvent.id !== event.id,
         );
@@ -313,14 +370,14 @@ async function flushPendingAnonymousEvents() {
   return analyticsFlushPromise;
 }
 
-function trackAnonymousEvent(
-  eventName: string,
-  eventData?: Record<string, string | number | boolean>,
+function queueAnonymousEvent(
+  name?: string,
+  data?: Record<string, string | number | boolean>,
 ) {
   const event: PendingAnonymousEvent = {
     id: createAnonymousEventId(),
-    name: eventName,
-    data: eventData,
+    name,
+    data,
     queuedAt: Date.now(),
   };
 
@@ -328,16 +385,15 @@ function trackAnonymousEvent(
     -ANALYTICS_QUEUE_LIMIT,
   );
 
-  if (!writePendingAnonymousEvents(pending)) {
-    try {
-      void window.umami?.track(eventName, eventData);
-    } catch {
-      // Le statistiche non devono mai interferire con l'allenamento.
-    }
-    return;
-  }
-
+  if (!writePendingAnonymousEvents(pending)) return;
   void flushPendingAnonymousEvents();
+}
+
+function trackAnonymousEvent(
+  eventName: string,
+  eventData?: Record<string, string | number | boolean>,
+) {
+  queueAnonymousEvent(eventName, eventData);
 }
 
 function formatStatsNumber(value: number) {
@@ -1334,57 +1390,29 @@ export default function Home() {
       0,
     );
 
-    let trackerRetryScript: HTMLScriptElement | null = null;
-
     const tryFlushAnalytics = () => {
       void flushPendingAnonymousEvents();
     };
-    const ensureAnalyticsTracker = () => {
-      if (window.umami?.track) {
-        tryFlushAnalytics();
-        return;
-      }
-
-      if (!navigator.onLine || trackerRetryScript?.isConnected) return;
-
-      const retryScript = document.createElement("script");
-      retryScript.async = true;
-      retryScript.src = `https://cloud.umami.is/script.js?retry=${APP_VERSION}`;
-      retryScript.dataset.websiteId = "1ccb1211-a681-44e1-a8ef-5fc98a656dcf";
-      retryScript.dataset.domains = "paolo-baochien.github.io";
-      retryScript.addEventListener("load", tryFlushAnalytics, { once: true });
-      retryScript.addEventListener(
-        "error",
-        () => {
-          retryScript.remove();
-          if (trackerRetryScript === retryScript) trackerRetryScript = null;
-        },
-        { once: true },
-      );
-      trackerRetryScript = retryScript;
-      document.head.appendChild(retryScript);
-    };
     const handleVisibilityForAnalytics = () => {
-      if (document.visibilityState === "visible") ensureAnalyticsTracker();
+      if (document.visibilityState === "visible") tryFlushAnalytics();
     };
     const updateConnection = () => {
       setIsOnline(navigator.onLine);
       if (navigator.onLine && document.readyState === "complete") {
-        ensureAnalyticsTracker();
+        tryFlushAnalytics();
       }
     };
     updateConnection();
     window.addEventListener("online", updateConnection);
     window.addEventListener("offline", updateConnection);
-    window.addEventListener("pageshow", ensureAnalyticsTracker);
+    window.addEventListener("pageshow", tryFlushAnalytics);
     document.addEventListener("visibilitychange", handleVisibilityForAnalytics);
 
-    const trackerScript = document.getElementById("umami-tracker");
-    trackerScript?.addEventListener("load", tryFlushAnalytics);
     const analyticsRetryTimer = window.setInterval(
-      ensureAnalyticsTracker,
-      5_000,
+      tryFlushAnalytics,
+      15_000,
     );
+    queueAnonymousEvent();
 
     const handleControllerChange = () => {
       if (
@@ -1426,13 +1454,11 @@ export default function Home() {
       window.clearInterval(analyticsRetryTimer);
       window.removeEventListener("online", updateConnection);
       window.removeEventListener("offline", updateConnection);
-      window.removeEventListener("pageshow", ensureAnalyticsTracker);
+      window.removeEventListener("pageshow", tryFlushAnalytics);
       document.removeEventListener(
         "visibilitychange",
         handleVisibilityForAnalytics,
       );
-      trackerScript?.removeEventListener("load", tryFlushAnalytics);
-      trackerRetryScript?.remove();
       navigator.serviceWorker?.removeEventListener(
         "controllerchange",
         handleControllerChange,

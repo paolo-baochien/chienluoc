@@ -43,8 +43,7 @@ test("server-renders the Chiến lược trainer", async () => {
   assert.match(html, />Việt Võ Đạo<\/span>/);
   assert.doesNotMatch(html, /Bảo Lan · Việt Võ Đạo/);
   assert.match(html, /https:\/\/paypal\.me\/paolopasquetto/);
-  assert.match(html, /https:\/\/cloud\.umami\.is\/script\.js/);
-  assert.match(html, /1ccb1211-a681-44e1-a8ef-5fc98a656dcf/);
+  assert.doesNotMatch(html, /https:\/\/cloud\.umami\.is\/script\.js/);
   assert.match(html, />\s*Statistiche\s*</);
   assert.equal((html.match(/Ringraziamenti/g) ?? []).length, 1);
   assert.doesNotMatch(html, />Grazie</);
@@ -174,12 +173,13 @@ test("includes precise voice, playback, and screen-awake support", async () => {
   assert.match(clientSource, /trackAnonymousEvent\("exam_complete"/);
   assert.match(clientSource, /chien-luoc-analytics-queue-v1/);
   assert.match(clientSource, /flushPendingAnonymousEvents/);
+  assert.match(clientSource, /https:\/\/gateway\.umami\.is\/api\/send/);
+  assert.match(clientSource, /timestamp: Math\.floor\(event\.queuedAt \/ 1000\)/);
+  assert.match(clientSource, /if \(!response\.ok\)/);
+  assert.match(clientSource, /queueAnonymousEvent\(\);/);
   assert.match(clientSource, /window\.localStorage\.setItem/);
   assert.match(clientSource, /window\.addEventListener\("online", updateConnection\)/);
-  assert.match(clientSource, /trackerScript\?\.addEventListener\("load", tryFlushAnalytics\)/);
-  assert.match(clientSource, /const ensureAnalyticsTracker = \(\) =>/);
-  assert.match(clientSource, /document\.head\.appendChild\(retryScript\)/);
-  assert.match(clientSource, /retryScript\.dataset\.domains = "paolo-baochien\.github\.io"/);
+  assert.doesNotMatch(clientSource, /window\.umami/);
   assert.match(clientSource, /navigator\.serviceWorker\?\.addEventListener/);
   assert.match(clientSource, /"controllerchange"/);
   assert.match(clientSource, /registration\.update\(\)/);
@@ -205,7 +205,7 @@ test("includes precise voice, playback, and screen-awake support", async () => {
   );
   assert.doesNotMatch(styles, /\.voice-core > span:not\(\.sound-bars\)/);
   assert.match(clientSource, /\.register\(`sw\.js\?v=\$\{APP_VERSION\}`\)/);
-  assert.match(serviceWorker, /chien-luoc-trainer-v35/);
+  assert.match(serviceWorker, /chien-luoc-trainer-v36/);
   assert.match(serviceWorker, /url\.pathname\.endsWith\("\/stats\.json"\)/);
 });
 
